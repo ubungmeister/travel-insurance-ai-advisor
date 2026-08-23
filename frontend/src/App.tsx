@@ -1,10 +1,20 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
+const API_URL = import.meta.env.VITE_API_URL
+
 function App() {
   const [count, setCount] = useState(0)
+  const [apiStatus, setApiStatus] = useState('checking...')
+
+  useEffect(() => {
+    fetch(`${API_URL}/health`)
+      .then((res) => res.json())
+      .then((data) => setApiStatus(data.status))
+      .catch(() => setApiStatus('unreachable'))
+  }, [])
 
   return (
     <>
@@ -25,6 +35,9 @@ function App() {
           Edit <code>src/App.tsx</code> and save to test HMR
         </p>
       </div>
+      <p>
+        Backend status: <strong>{apiStatus}</strong>
+      </p>
       <p className="read-the-docs">
         Click on the Vite and React logos to learn more
       </p>
