@@ -3,7 +3,7 @@ import reactLogo from './assets/react.svg'
 import viteLogo from '/vite.svg'
 import './App.css'
 
-const API_URL = import.meta.env.VITE_API_URL
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:8000'
 
 function App() {
   const [count, setCount] = useState(0)
@@ -11,7 +11,10 @@ function App() {
 
   useEffect(() => {
     fetch(`${API_URL}/health`)
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        return res.json()
+      })
       .then((data) => setApiStatus(data.status))
       .catch(() => setApiStatus('unreachable'))
   }, [])

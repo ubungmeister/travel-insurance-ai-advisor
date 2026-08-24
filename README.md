@@ -4,6 +4,7 @@ Full-stack app with a React (Vite) frontend and a Python (FastAPI) backend.
 
 ```
 ├── frontend/
+│   └── .env.example
 ├── backend/
 ├── .gitignore
 ├── README.md
@@ -46,4 +47,4 @@ Test it: [http://localhost:8000/health](http://localhost:8000/health) should ret
 
 ## Environment variables
 
-Copy `.env.example` to `.env` in the relevant folder(s) and fill in the values.
+Copy `.env.example` to `.env` at the repo root, and copy `frontend/.env.example` to `frontend/.env`. Fill in the values; `.env` files are gitignored and never committed.
