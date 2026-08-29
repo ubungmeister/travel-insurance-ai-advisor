@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -13,6 +13,15 @@ if TYPE_CHECKING:
 
 class PlanVariant(Base):
     __tablename__ = "plan_variants"
+    __table_args__ = (
+        UniqueConstraint(
+            "plan_version_id",
+            "territory",
+            "sport_category",
+            name="uq_plan_variant_identity",
+            postgresql_nulls_not_distinct=True,
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
 

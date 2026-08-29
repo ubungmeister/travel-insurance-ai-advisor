@@ -271,6 +271,12 @@ def _seed_demo_policy(
         )
         db.add(policy)
         db.flush()
+    else:
+        policy.trip_purpose = "VACATION"
+        policy.sport_category = "RECREATIONAL"
+        policy.status = "ACTIVE"
+        policy.price_paid = Decimal("45.00")
+        policy.currency = "CZK"
 
     insured_person = db.scalar(
         select(InsuredPerson).where(
