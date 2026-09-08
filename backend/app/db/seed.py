@@ -259,10 +259,11 @@ def _seed_demo_policy(
     )
     if policy is None:
         policy = Policy(
+            policy_number="POL-2026-000001",
             user_id=user.id,
             plan_variant_id=variant.id,
             trip_purpose="VACATION",
-            sport_category="RECREATIONAL",
+            declared_sport_category="RECREATIONAL",
             start_date=date(2026, 8, 26),
             end_date=date(2026, 9, 5),
             status="ACTIVE",
@@ -272,8 +273,9 @@ def _seed_demo_policy(
         db.add(policy)
         db.flush()
     else:
+        policy.policy_number = "POL-2026-000001"
         policy.trip_purpose = "VACATION"
-        policy.sport_category = "RECREATIONAL"
+        policy.declared_sport_category = "RECREATIONAL"
         policy.status = "ACTIVE"
         policy.price_paid = Decimal("45.00")
         policy.currency = "CZK"

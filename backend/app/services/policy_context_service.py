@@ -49,7 +49,7 @@ def build_policy_context(policy: Policy) -> PolicyContext:
         plan_version=policy.plan_variant.plan_version.version,
         territory=policy.plan_variant.territory,
         trip_purpose=policy.trip_purpose,
-        sport_category=policy.sport_category,
+        sport_category=policy.declared_sport_category,
         start_date=policy.start_date,
         end_date=policy.end_date,
         insured_people=insured_people,

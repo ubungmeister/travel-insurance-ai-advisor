@@ -2,7 +2,17 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, ForeignKey, Numeric, String, func
+from sqlalchemy import (
+    CheckConstraint,
+    Date,
+    DateTime,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    UniqueConstraint,
+    func,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -15,8 +25,42 @@ if TYPE_CHECKING:
 
 class Policy(Base):
     __tablename__ = "policies"
+    __table_args__ = (
+        UniqueConstraint(
+            "policy_number",
+            name="uq_policies_policy_number",
+        ),
+        CheckConstraint(
+            "end_date >= start_date",
+            name="ck_policy_valid_date_range",
+        ),
+        CheckConstraint(
+            "price_paid >= 0",
+            name="ck_policy_non_negative_price",
+        ),
+        CheckConstraint(
+            "status IN ('ACTIVE', 'EXPIRED', 'CANCELLED')",
+            name="ck_policy_valid_status",
+        ),
+        Index(
+            "ix_policies_user_status_dates",
+            "user_id",
+            "status",
+            "start_date",
+            "end_date",
+        ),
+        Index(
+            "ix_policies_plan_variant_id",
+            "plan_variant_id",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
+    policy_number: Mapped[str] = mapped_column(
+        String(50),
+        nullable=False,
+    )
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
@@ -33,7 +77,7 @@ class Policy(Base):
         nullable=False,
     )
 
-    sport_category: Mapped[str] = mapped_column(
+    declared_sport_category: Mapped[str] = mapped_column(
         String(50),
         nullable=False,
     )
@@ -69,6 +113,13 @@ class Policy(Base):
         nullable=False,
     )
 
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        onupdate=func.now(),
+        nullable=False,
+    )
+
     user: Mapped["User"] = relationship(
         back_populates="policies",
     )
@@ -79,4 +130,6 @@ class Policy(Base):
 
     insured_people: Mapped[list["InsuredPerson"]] = relationship(
         back_populates="policy",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
