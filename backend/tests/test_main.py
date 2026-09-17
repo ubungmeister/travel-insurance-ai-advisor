@@ -1,8 +1,21 @@
+from uuid import uuid4
+
+import pytest
 from fastapi.testclient import TestClient
 
+from app.dependencies.authentication import CurrentUser, get_current_user
 from app.main import app
 
 client = TestClient(app)
+
+
+@pytest.fixture(autouse=True)
+def override_current_user():
+    app.dependency_overrides[get_current_user] = lambda: CurrentUser(
+        auth_user_id=uuid4(), email="test@example.com"
+    )
+    yield
+    app.dependency_overrides.pop(get_current_user, None)
 
 
 def test_health():
@@ -39,3 +52,19 @@ def test_chat_rejects_unknown_fields():
         "/api/v1/chat", json={"message": "hello", "role": "admin"}
     )
     assert response.status_code == 422
+
+
+def test_chat_requires_auth():
+    app.dependency_overrides.pop(get_current_user, None)
+    response = client.post("/api/v1/chat", json={"message": "Am I covered?"})
+    assert response.status_code == 401
+
+
+def test_chat_rejects_invalid_token():
+    app.dependency_overrides.pop(get_current_user, None)
+    response = client.post(
+        "/api/v1/chat",
+        json={"message": "Am I covered?"},
+        headers={"Authorization": "Bearer not-a-real-token"},
+    )
+    assert response.status_code == 401
