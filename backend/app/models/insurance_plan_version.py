@@ -1,7 +1,7 @@
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, Date, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -17,6 +17,14 @@ class InsurancePlanVersion(Base):
             "name",
             "version",
             name="uq_insurance_plan_version",
+        ),
+        CheckConstraint(
+            "version > 0",
+            name="ck_insurance_plan_version_positive",
+        ),
+        CheckConstraint(
+            "valid_to IS NULL OR valid_to >= valid_from",
+            name="ck_insurance_plan_version_valid_dates",
         ),
     )
 

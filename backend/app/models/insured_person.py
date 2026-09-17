@@ -16,7 +16,8 @@ class InsuredPerson(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
 
     policy_id: Mapped[int] = mapped_column(
-        ForeignKey("policies.id"),
+        ForeignKey("policies.id", ondelete="CASCADE"),
+        index=True,
         nullable=False,
     )
 

@@ -68,7 +68,7 @@ def test_seed_restores_demo_policy_values() -> None:
         policy = db.scalar(select(Policy))
         assert policy is not None
         policy.trip_purpose = "CHANGED"
-        policy.sport_category = "CHANGED"
+        policy.declared_sport_category = "CHANGED"
         policy.status = "CANCELLED"
         policy.price_paid = Decimal("999.00")
         policy.currency = "EUR"
@@ -79,7 +79,7 @@ def test_seed_restores_demo_policy_values() -> None:
         db.refresh(policy)
 
         assert policy.trip_purpose == "VACATION"
-        assert policy.sport_category == "RECREATIONAL"
+        assert policy.declared_sport_category == "RECREATIONAL"
         assert policy.status == "ACTIVE"
         assert policy.price_paid == Decimal("45.00")
         assert policy.currency == "CZK"

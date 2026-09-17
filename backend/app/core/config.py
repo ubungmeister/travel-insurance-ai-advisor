@@ -15,5 +15,13 @@ class Settings(BaseSettings):
         default_factory=lambda: ["http://localhost:5173"]
     )
 
+    # Supabase Auth issues HS256 JWTs signed with this project secret
+    supabase_jwt_secret: str = ""
+    supabase_jwt_audience: str = "authenticated"
+
+    # Used by AuthService to call the Supabase Auth REST API directly
+    supabase_url: str = ""
+    supabase_publishable_key: str = ""
+
 
 settings = Settings()

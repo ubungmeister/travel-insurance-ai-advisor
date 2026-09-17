@@ -1,14 +1,24 @@
+import type { User } from '@supabase/supabase-js'
 import { create } from 'zustand'
 
+import { supabase } from '../../lib/supabase'
+
+export type AuthStatus = 'checking' | 'authenticated' | 'unauthenticated'
+
 interface AuthState {
-  isAuthenticated: boolean
-  // placeholder until the backend exposes real auth endpoints
-  login: () => void
-  logout: () => void
+  status: AuthStatus
+  user: User | null
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
-  isAuthenticated: false,
-  login: () => set({ isAuthenticated: true }),
-  logout: () => set({ isAuthenticated: false }),
+export const useAuthStore = create<AuthState>(() => ({
+  status: 'checking',
+  user: null,
 }))
+
+// Fires immediately with the persisted session (if any), then on every sign-in/out/refresh
+supabase.auth.onAuthStateChange((_event, session) => {
+  useAuthStore.setState({
+    status: session ? 'authenticated' : 'unauthenticated',
+    user: session?.user ?? null,
+  })
+})
