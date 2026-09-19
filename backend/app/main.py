@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
+from app.api.policy import router as policies_router
 from app.core.config import settings
 from app.db.session import get_db
 
@@ -24,7 +25,7 @@ app.add_middleware(
 
 app.include_router(auth_router)
 app.include_router(chat_router)
-
+app.include_router(policies_router) 
 
 @app.get("/health")
 def health():

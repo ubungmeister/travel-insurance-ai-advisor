@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from enum import StrEnum
 from typing import TYPE_CHECKING
 
 from sqlalchemy import (
@@ -23,6 +24,14 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
+class PolicyStatus(StrEnum):
+    ACTIVE = "ACTIVE"
+    PENDING = "PENDING"
+    EXPIRED = "EXPIRED"
+    CANCELLED = "CANCELLED"
+    LAPSED = "LAPSED"
+
+
 class Policy(Base):
     __tablename__ = "policies"
     __table_args__ = (
@@ -39,7 +48,7 @@ class Policy(Base):
             name="ck_policy_non_negative_price",
         ),
         CheckConstraint(
-            "status IN ('ACTIVE', 'EXPIRED', 'CANCELLED')",
+            "status IN ('ACTIVE', 'PENDING', 'EXPIRED', 'CANCELLED', 'LAPSED')",
             name="ck_policy_valid_status",
         ),
         Index(
