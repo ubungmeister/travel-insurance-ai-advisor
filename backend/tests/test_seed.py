@@ -51,7 +51,7 @@ def test_seed_is_idempotent() -> None:
     assert first_counts == second_counts
     assert first_counts[CoverageType] == 7
     assert first_counts[InsurancePlanVersion] == 4
-    assert first_counts[PlanVariant] == 8
+    assert first_counts[PlanVariant] == 9
     assert first_counts[User] == 1
     assert first_counts[Policy] == 1
     assert first_counts[InsuredPerson] == 1
@@ -67,8 +67,8 @@ def test_seed_restores_demo_policy_values() -> None:
 
         policy = db.scalar(select(Policy))
         assert policy is not None
-        policy.trip_purpose = "CHANGED"
-        policy.declared_sport_category = "CHANGED"
+        policy.trip_purpose = "WORK_MANUAL"
+        policy.declared_sport_category = "WINTER"
         policy.status = "CANCELLED"
         policy.price_paid = Decimal("999.00")
         policy.currency = "EUR"

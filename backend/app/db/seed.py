@@ -104,7 +104,7 @@ PLAN_VARIANTS = (
     },
     {
         "plan": "Domestic",
-        "territory": "DOMESTIC",
+        "territory": "CZECH_REPUBLIC",
         "sport_category": "RECREATIONAL",
         "coverages": {
             "PERMANENT_INJURY": "400000",
@@ -114,8 +114,18 @@ PLAN_VARIANTS = (
     },
     {
         "plan": "Domestic",
-        "territory": "DOMESTIC",
-        "sport_category": "WINTER_OR_RISKY",
+        "territory": "CZECH_REPUBLIC",
+        "sport_category": "WINTER",
+        "coverages": {
+            "PERMANENT_INJURY": "600000",
+            "LIABILITY": "15000000",
+            "BAGGAGE": "25000",
+        },
+    },
+    {
+        "plan": "Domestic",
+        "territory": "CZECH_REPUBLIC",
+        "sport_category": "RISKY",
         "coverages": {
             "PERMANENT_INJURY": "600000",
             "LIABILITY": "15000000",

@@ -32,6 +32,12 @@ class PolicyStatus(StrEnum):
     LAPSED = "LAPSED"
 
 
+class TripPurpose(StrEnum):
+    VACATION = "VACATION"
+    WORK_MANUAL = "WORK_MANUAL"
+    WORK_NON_MANUAL = "WORK_NON_MANUAL"
+
+
 class Policy(Base):
     __tablename__ = "policies"
     __table_args__ = (
@@ -42,6 +48,14 @@ class Policy(Base):
         CheckConstraint(
             "end_date >= start_date",
             name="ck_policy_valid_date_range",
+        ),
+        CheckConstraint(
+            "trip_purpose IN ('VACATION', 'WORK_MANUAL', 'WORK_NON_MANUAL')",
+            name="ck_policy_valid_trip_purpose",
+        ),
+        CheckConstraint(
+            "declared_sport_category IN ('RECREATIONAL', 'WINTER', 'RISKY')",
+            name="ck_policy_valid_declared_sport_category",
         ),
         CheckConstraint(
             "price_paid >= 0",

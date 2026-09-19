@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
+from enum import StrEnum
 
-from sqlalchemy import ForeignKey, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
@@ -9,6 +10,18 @@ if TYPE_CHECKING:
     from app.models.insurance_plan_version import InsurancePlanVersion
     from app.models.policy import Policy
     from app.models.variant_coverage import VariantCoverage
+
+
+class Territory(StrEnum):
+    EUROPE = "EUROPE"
+    WORLD = "WORLD"
+    CZECH_REPUBLIC = "CZECH_REPUBLIC"
+
+
+class SportCategory(StrEnum):
+    RECREATIONAL = "RECREATIONAL"
+    WINTER = "WINTER"
+    RISKY = "RISKY"
 
 
 class PlanVariant(Base):
@@ -20,6 +33,14 @@ class PlanVariant(Base):
             "sport_category",
             name="uq_plan_variant_identity",
             postgresql_nulls_not_distinct=True,
+        ),
+        CheckConstraint(
+            "territory IN ('EUROPE', 'WORLD', 'CZECH_REPUBLIC')",
+            name="ck_plan_variant_valid_territory",
+        ),
+        CheckConstraint(
+            "sport_category IS NULL OR sport_category IN ('RECREATIONAL', 'WINTER', 'RISKY')",
+            name="ck_plan_variant_valid_sport_category",
         ),
     )
 
