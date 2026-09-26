@@ -2,9 +2,7 @@ r"""Smoke-test text extraction against a real PDF file.
 
 Run from the backend directory:
 
-    .\.venv\Scripts\python.exe -m scripts.check_pdf_extraction \
-        "C:\Users\Artem\Downloads\11N9393_VPP_CP_2021.pdf" \
-        --expected-pages 36
+    python -m scripts.check_pdf_extraction "path/to/document.pdf"
 """
 
 import argparse

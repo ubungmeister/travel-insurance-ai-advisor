@@ -35,4 +35,4 @@ tzdata==2026.3
 uvicorn==0.52.4
 watchfiles==1.2.0
 websockets==16.1.1
-pypdf
+pypdf==6.19.0
