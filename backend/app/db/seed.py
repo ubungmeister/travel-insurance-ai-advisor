@@ -276,7 +276,7 @@ def _seed_demo_policy(
             declared_sport_category="RECREATIONAL",
             start_date=date(2026, 8, 26),
             end_date=date(2026, 9, 5),
-            status="ACTIVE",
+            status="ISSUED",
             price_paid=Decimal("45.00"),
             currency="CZK",
         )
@@ -286,7 +286,7 @@ def _seed_demo_policy(
         policy.policy_number = "POL-2026-000001"
         policy.trip_purpose = "VACATION"
         policy.declared_sport_category = "RECREATIONAL"
-        policy.status = "ACTIVE"
+        policy.status = "ISSUED"
         policy.price_paid = Decimal("45.00")
         policy.currency = "CZK"
 

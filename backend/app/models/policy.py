@@ -25,11 +25,8 @@ if TYPE_CHECKING:
 
 
 class PolicyStatus(StrEnum):
-    ACTIVE = "ACTIVE"
-    PENDING = "PENDING"
-    EXPIRED = "EXPIRED"
+    ISSUED = "ISSUED"
     CANCELLED = "CANCELLED"
-    LAPSED = "LAPSED"
 
 
 class TripPurpose(StrEnum):
@@ -62,7 +59,7 @@ class Policy(Base):
             name="ck_policy_non_negative_price",
         ),
         CheckConstraint(
-            "status IN ('ACTIVE', 'PENDING', 'EXPIRED', 'CANCELLED', 'LAPSED')",
+            "status IN ('ISSUED', 'CANCELLED')",
             name="ck_policy_valid_status",
         ),
         Index(

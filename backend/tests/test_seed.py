@@ -80,6 +80,6 @@ def test_seed_restores_demo_policy_values() -> None:
 
         assert policy.trip_purpose == "VACATION"
         assert policy.declared_sport_category == "RECREATIONAL"
-        assert policy.status == "ACTIVE"
+        assert policy.status == "ISSUED"
         assert policy.price_paid == Decimal("45.00")
         assert policy.currency == "CZK"

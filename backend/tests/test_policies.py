@@ -34,7 +34,7 @@ def policy_api():
         db.add_all([other, User(email="empty@example.com", auth_user_id=empty_id)])
 
         original = db.scalar(select(Policy))
-        original.status = "EXPIRED"
+        original.status = "CANCELLED"
 
         for user, number, start in [
             (owner, "OWNER-FUTURE", date(2030, 1, 1)),
@@ -49,7 +49,7 @@ def policy_api():
                     declared_sport_category=original.declared_sport_category,
                     start_date=start,
                     end_date=start,
-                    status="ACTIVE",
+                    status="ISSUED",
                     price_paid=Decimal("45.00"),
                     currency=original.currency,
                 )
@@ -93,10 +93,10 @@ def test_lists_only_owners_policies_including_past_and_future(policy_api):
     items = response.json()
     assert len(items) == 2
     assert items[0]["policy_number"] == "OWNER-FUTURE"
-    assert items[0]["status"] == "ACTIVE"
+    assert items[0]["status"] == "ISSUED"
     assert items[0]["plan_name"] == "Dominant"
     assert items[0]["territory"] == "EUROPE"
-    assert items[1]["status"] == "EXPIRED"
+    assert items[1]["status"] == "CANCELLED"
     assert "auth_user_id" not in items[0]
     assert "email" not in items[0]
 
