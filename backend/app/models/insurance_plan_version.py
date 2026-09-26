@@ -1,12 +1,14 @@
 from datetime import date
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, Date, String, UniqueConstraint
+from sqlalchemy import CheckConstraint, Date, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.insurance_plan import InsurancePlan
+    from app.models.insurance_terms_version import InsuranceTermsVersion
     from app.models.plan_variant import PlanVariant
 
 
@@ -14,7 +16,7 @@ class InsurancePlanVersion(Base):
     __tablename__ = "insurance_plan_versions"
     __table_args__ = (
         UniqueConstraint(
-            "name",
+            "plan_id",
             "version",
             name="uq_insurance_plan_version",
         ),
@@ -30,8 +32,13 @@ class InsurancePlanVersion(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    name: Mapped[str] = mapped_column(
-        String(50),
+    plan_id: Mapped[int] = mapped_column(
+        ForeignKey("insurance_plans.id"),
+        nullable=False,
+    )
+
+    terms_version_id: Mapped[int] = mapped_column(
+        ForeignKey("insurance_terms_versions.id"),
         nullable=False,
     )
 
@@ -47,6 +54,14 @@ class InsurancePlanVersion(Base):
     valid_to: Mapped[date | None] = mapped_column(
         Date,
         nullable=True,
+    )
+
+    plan: Mapped["InsurancePlan"] = relationship(
+        back_populates="versions",
+    )
+
+    terms_version: Mapped["InsuranceTermsVersion"] = relationship(
+        back_populates="plan_versions",
     )
 
     variants: Mapped[list["PlanVariant"]] = relationship(

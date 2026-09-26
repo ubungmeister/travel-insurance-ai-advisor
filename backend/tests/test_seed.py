@@ -7,7 +7,9 @@ from app.db.base import Base
 from app.db.seed import seed_database
 from app.models import (
     CoverageType,
+    InsurancePlan,
     InsurancePlanVersion,
+    InsuranceTermsVersion,
     InsuredPerson,
     PlanVariant,
     Policy,
@@ -32,7 +34,9 @@ def test_seed_is_idempotent() -> None:
             model: _count(db, model)
             for model in (
                 CoverageType,
+                InsurancePlan,
                 InsurancePlanVersion,
+                InsuranceTermsVersion,
                 PlanVariant,
                 VariantCoverage,
                 User,
@@ -50,8 +54,10 @@ def test_seed_is_idempotent() -> None:
 
     assert first_counts == second_counts
     assert first_counts[CoverageType] == 7
+    assert first_counts[InsurancePlan] == 4
     assert first_counts[InsurancePlanVersion] == 4
-    assert first_counts[PlanVariant] == 8
+    assert first_counts[InsuranceTermsVersion] == 1
+    assert first_counts[PlanVariant] == 9
     assert first_counts[User] == 1
     assert first_counts[Policy] == 1
     assert first_counts[InsuredPerson] == 1
@@ -67,8 +73,8 @@ def test_seed_restores_demo_policy_values() -> None:
 
         policy = db.scalar(select(Policy))
         assert policy is not None
-        policy.trip_purpose = "CHANGED"
-        policy.declared_sport_category = "CHANGED"
+        policy.trip_purpose = "WORK_MANUAL"
+        policy.declared_sport_category = "WINTER"
         policy.status = "CANCELLED"
         policy.price_paid = Decimal("999.00")
         policy.currency = "EUR"
@@ -80,6 +86,6 @@ def test_seed_restores_demo_policy_values() -> None:
 
         assert policy.trip_purpose == "VACATION"
         assert policy.declared_sport_category == "RECREATIONAL"
-        assert policy.status == "ACTIVE"
+        assert policy.status == "ISSUED"
         assert policy.price_paid == Decimal("45.00")
         assert policy.currency == "CZK"

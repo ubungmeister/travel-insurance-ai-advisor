@@ -2,6 +2,7 @@ from sqlalchemy import CheckConstraint, Index, UniqueConstraint
 
 from app.models import (
     InsurancePlanVersion,
+    InsuranceTermsVersion,
     InsuredPerson,
     PlanVariant,
     Policy,
@@ -36,7 +37,7 @@ def test_plan_version_has_natural_key_constraint() -> None:
         "uq_insurance_plan_version",
     )
 
-    assert list(constraint.columns.keys()) == ["name", "version"]
+    assert list(constraint.columns.keys()) == ["plan_id", "version"]
 
 
 def test_plan_variant_has_null_safe_natural_key_constraint() -> None:
@@ -64,6 +65,18 @@ def test_plan_version_rejects_invalid_version_and_dates() -> None:
     assert _check_constraint(
         InsurancePlanVersion,
         "ck_insurance_plan_version_valid_dates",
+    ).sqltext.text == "valid_to IS NULL OR valid_to >= valid_from"
+
+
+def test_terms_version_has_natural_key_and_valid_dates_constraint() -> None:
+    constraint = _unique_constraint(
+        InsuranceTermsVersion,
+        "uq_insurance_terms_versions_code",
+    )
+    assert list(constraint.columns.keys()) == ["code"]
+    assert _check_constraint(
+        InsuranceTermsVersion,
+        "ck_insurance_terms_version_valid_dates",
     ).sqltext.text == "valid_to IS NULL OR valid_to >= valid_from"
 
 

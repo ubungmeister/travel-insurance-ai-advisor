@@ -3,7 +3,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from app.models import PlanVariant, Policy, User
+from app.models import InsurancePlanVersion, PlanVariant, Policy, User
 
 
 def list_policies_by_auth_user_id(
@@ -15,7 +15,11 @@ def list_policies_by_auth_user_id(
         select(Policy)
         .join(Policy.user)
         .where(User.auth_user_id == auth_user_id)
-        .options(joinedload(Policy.plan_variant).joinedload(PlanVariant.plan_version))
+        .options(
+            joinedload(Policy.plan_variant)
+            .joinedload(PlanVariant.plan_version)
+            .joinedload(InsurancePlanVersion.plan)
+        )
         .order_by(Policy.start_date.desc(), Policy.id.desc())
     )
     return list(db.scalars(statement).unique().all())

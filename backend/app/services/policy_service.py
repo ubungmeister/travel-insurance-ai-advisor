@@ -12,7 +12,7 @@ def list_user_policies(db: Session, auth_user_id: UUID) -> list[PolicySummary]:
         PolicySummary(
             policy_id=policy.id,
             policy_number=policy.policy_number,
-            plan_name=policy.plan_variant.plan_version.name,
+            plan_name=policy.plan_variant.plan_version.plan.name,
             plan_version=policy.plan_variant.plan_version.version,
             territory=policy.plan_variant.territory,
             trip_purpose=policy.trip_purpose,

@@ -2,7 +2,8 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.policy import PolicyStatus
+from app.models.plan_variant import SportCategory, Territory
+from app.models.policy import PolicyStatus, TripPurpose
 
 
 class PolicySummary(BaseModel):
@@ -14,9 +15,9 @@ class PolicySummary(BaseModel):
     policy_number: str
     plan_name: str
     plan_version: int
-    territory: str
-    trip_purpose: str
-    sport_category: str
+    territory: Territory
+    trip_purpose: TripPurpose
+    sport_category: SportCategory
     start_date: date
     end_date: date
     status: PolicyStatus

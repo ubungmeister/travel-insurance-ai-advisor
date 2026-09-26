@@ -25,11 +25,14 @@ if TYPE_CHECKING:
 
 
 class PolicyStatus(StrEnum):
-    ACTIVE = "ACTIVE"
-    PENDING = "PENDING"
-    EXPIRED = "EXPIRED"
+    ISSUED = "ISSUED"
     CANCELLED = "CANCELLED"
-    LAPSED = "LAPSED"
+
+
+class TripPurpose(StrEnum):
+    VACATION = "VACATION"
+    WORK_MANUAL = "WORK_MANUAL"
+    WORK_NON_MANUAL = "WORK_NON_MANUAL"
 
 
 class Policy(Base):
@@ -44,11 +47,19 @@ class Policy(Base):
             name="ck_policy_valid_date_range",
         ),
         CheckConstraint(
+            "trip_purpose IN ('VACATION', 'WORK_MANUAL', 'WORK_NON_MANUAL')",
+            name="ck_policy_valid_trip_purpose",
+        ),
+        CheckConstraint(
+            "declared_sport_category IN ('RECREATIONAL', 'WINTER', 'RISKY')",
+            name="ck_policy_valid_declared_sport_category",
+        ),
+        CheckConstraint(
             "price_paid >= 0",
             name="ck_policy_non_negative_price",
         ),
         CheckConstraint(
-            "status IN ('ACTIVE', 'PENDING', 'EXPIRED', 'CANCELLED', 'LAPSED')",
+            "status IN ('ISSUED', 'CANCELLED')",
             name="ck_policy_valid_status",
         ),
         Index(
