@@ -7,7 +7,10 @@ from app.models.plan_variant import PlanVariant
 from app.models.policy import Policy
 from app.models.user import User
 from app.models.variant_coverage import VariantCoverage
-
+from app.models.knowledge_document import (
+    DocumentProcessingStatus,
+    KnowledgeDocument,
+)
 __all__ = [
     "CoverageType",
     "InsurancePlan",
@@ -18,4 +21,6 @@ __all__ = [
     "Policy",
     "User",
     "VariantCoverage",
+    "DocumentProcessingStatus",
+    "KnowledgeDocument",
 ]

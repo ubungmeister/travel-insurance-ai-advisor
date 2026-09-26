@@ -8,6 +8,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.insurance_plan_version import InsurancePlanVersion
+    from app.models.knowledge_document import KnowledgeDocument
 
 
 class InsuranceTermsVersion(Base):
@@ -41,5 +42,9 @@ class InsuranceTermsVersion(Base):
     )
 
     plan_versions: Mapped[list["InsurancePlanVersion"]] = relationship(
+        back_populates="terms_version",
+    )
+
+    knowledge_documents: Mapped[list["KnowledgeDocument"]] = relationship(
         back_populates="terms_version",
     )
