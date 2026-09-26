@@ -7,7 +7,9 @@ from sqlalchemy.orm import Session
 from app.db.session import SessionLocal
 from app.models import (
     CoverageType,
+    InsurancePlan,
     InsurancePlanVersion,
+    InsuranceTermsVersion,
     InsuredPerson,
     PlanVariant,
     Policy,
@@ -152,23 +154,52 @@ def _seed_coverage_types(db: Session) -> dict[str, CoverageType]:
     return coverage_types
 
 
-def _get_or_create_plan(db: Session, name: str) -> InsurancePlanVersion:
-    plan = db.scalar(
+def _get_or_create_insurance_plan(db: Session, name: str) -> InsurancePlan:
+    plan = db.scalar(select(InsurancePlan).where(InsurancePlan.name == name))
+    if plan is None:
+        plan = InsurancePlan(name=name)
+        db.add(plan)
+        db.flush()
+    return plan
+
+
+def _get_or_create_terms_version(db: Session, code: str) -> InsuranceTermsVersion:
+    terms_version = db.scalar(
+        select(InsuranceTermsVersion).where(InsuranceTermsVersion.code == code)
+    )
+    if terms_version is None:
+        terms_version = InsuranceTermsVersion(
+            code=code,
+            valid_from=date(2021, 4, 1),
+            valid_to=None,
+        )
+        db.add(terms_version)
+        db.flush()
+    return terms_version
+
+
+def _get_or_create_plan_version(
+    db: Session, plan: InsurancePlan, terms_version: InsuranceTermsVersion
+) -> InsurancePlanVersion:
+    plan_version = db.scalar(
         select(InsurancePlanVersion).where(
-            InsurancePlanVersion.name == name,
+            InsurancePlanVersion.plan_id == plan.id,
             InsurancePlanVersion.version == 1,
         )
     )
-    if plan is None:
-        plan = InsurancePlanVersion(
-            name=name,
+    if plan_version is None:
+        plan_version = InsurancePlanVersion(
+            plan_id=plan.id,
+            terms_version_id=terms_version.id,
             version=1,
             valid_from=date(2026, 1, 1),
             valid_to=None,
         )
-        db.add(plan)
+        db.add(plan_version)
         db.flush()
-    return plan
+    else:
+        plan_version.terms_version_id = terms_version.id
+    return plan_version
 
 
 def _get_or_create_variant(
@@ -204,6 +235,7 @@ def _seed_product_catalogue(
     db: Session,
 ) -> dict[tuple[str, str, str | None], PlanVariant]:
     coverage_types = _seed_coverage_types(db)
+    terms_version = _get_or_create_terms_version(db, "VPP_CP_2021")
     variants: dict[tuple[str, str, str | None], PlanVariant] = {}
 
     for definition in PLAN_VARIANTS:
@@ -212,10 +244,13 @@ def _seed_product_catalogue(
         sport_category = definition["sport_category"]
         assert sport_category is None or isinstance(sport_category, str)
 
-        plan = _get_or_create_plan(db, plan_name)
+        insurance_plan = _get_or_create_insurance_plan(db, plan_name)
+        plan_version = _get_or_create_plan_version(
+            db, insurance_plan, terms_version
+        )
         variant = _get_or_create_variant(
             db,
-            plan,
+            plan_version,
             territory,
             sport_category,
         )
