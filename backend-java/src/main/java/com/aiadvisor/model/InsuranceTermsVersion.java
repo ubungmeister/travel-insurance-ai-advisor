@@ -11,9 +11,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "insurance_terms_versions")
+@Getter
+@Setter
 public class InsuranceTermsVersion {
 
     @Id
@@ -34,52 +38,4 @@ public class InsuranceTermsVersion {
 
     @OneToMany(mappedBy = "termsVersion")
     private List<KnowledgeDocument> knowledgeDocuments = new ArrayList<>();
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getCode() {
-        return code;
-    }
-
-    public void setCode(String code) {
-        this.code = code;
-    }
-
-    public LocalDate getValidFrom() {
-        return validFrom;
-    }
-
-    public void setValidFrom(LocalDate validFrom) {
-        this.validFrom = validFrom;
-    }
-
-    public LocalDate getValidTo() {
-        return validTo;
-    }
-
-    public void setValidTo(LocalDate validTo) {
-        this.validTo = validTo;
-    }
-
-    public List<InsurancePlanVersion> getPlanVersions() {
-        return planVersions;
-    }
-
-    public void setPlanVersions(List<InsurancePlanVersion> planVersions) {
-        this.planVersions = planVersions;
-    }
-
-    public List<KnowledgeDocument> getKnowledgeDocuments() {
-        return knowledgeDocuments;
-    }
-
-    public void setKnowledgeDocuments(List<KnowledgeDocument> knowledgeDocuments) {
-        this.knowledgeDocuments = knowledgeDocuments;
-    }
 }

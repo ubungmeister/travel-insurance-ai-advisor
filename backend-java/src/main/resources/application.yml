@@ -5,6 +5,11 @@ spring:
   application:
     name: ai-advisor
 
+  # Our API DTOs use snake_case field names (access_token, auth_user_id, ...) to
+  # match the existing FastAPI contract, so the frontend needs no changes.
+  jackson:
+    property-naming-strategy: SNAKE_CASE
+
   # Database connection (Supabase Postgres). Provided via env vars so they stay
   # out of source control and don't clash with the Python app's DATABASE_URL
   # format. Spring binds these automatically:
@@ -18,16 +23,22 @@ spring:
       ddl-auto: validate
     open-in-view: false
 
+  # Flyway is disabled: Alembic owns the schema/migrations, and Supabase's
+  # Supavisor pooler doesn't support the session-level advisory locks Flyway
+  # takes on startup. If Flyway ever owns migrations, run them via a direct
+  # (non-pooler) connection or a dedicated migration step, not at app boot.
   flyway:
-    # Baseline the existing Alembic-managed schema without changing it. No
-    # versioned migrations are applied yet (Alembic still owns migrations).
-    enabled: true
-    baseline-on-migrate: true
-    baseline-version: 1
-    baseline-description: "Existing Alembic-managed schema"
+    enabled: false
 
 # CORS origins for the Vite frontend. Override with APP_CORS_ALLOWED_ORIGINS
 # (comma-separated) if the frontend is served from other hosts.
 app:
   cors:
     allowed-origins: ${APP_CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
+  # Supabase Auth: used to verify access-token JWTs (JWKS/ES256) and to call the
+  # Supabase Auth REST API for login/refresh/logout.
+  supabase:
+    url: ${SUPABASE_URL}
+    publishable-key: ${SUPABASE_PUBLISHABLE_KEY}
+    jwt-audience: ${SUPABASE_JWT_AUDIENCE:authenticated}

@@ -11,9 +11,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "variant_coverages")
+@Getter
+@Setter
 public class VariantCoverage {
 
     @Id
@@ -33,44 +37,4 @@ public class VariantCoverage {
 
     @Column(nullable = false, length = 3)
     private String currency;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public PlanVariant getPlanVariant() {
-        return planVariant;
-    }
-
-    public void setPlanVariant(PlanVariant planVariant) {
-        this.planVariant = planVariant;
-    }
-
-    public CoverageType getCoverageType() {
-        return coverageType;
-    }
-
-    public void setCoverageType(CoverageType coverageType) {
-        this.coverageType = coverageType;
-    }
-
-    public BigDecimal getLimitAmount() {
-        return limitAmount;
-    }
-
-    public void setLimitAmount(BigDecimal limitAmount) {
-        this.limitAmount = limitAmount;
-    }
-
-    public String getCurrency() {
-        return currency;
-    }
-
-    public void setCurrency(String currency) {
-        this.currency = currency;
-    }
 }

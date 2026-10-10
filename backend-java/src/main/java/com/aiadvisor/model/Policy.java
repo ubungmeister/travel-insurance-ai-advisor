@@ -16,9 +16,14 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "policies")
+@Getter
+@Setter
 public class Policy {
 
     @Id
@@ -57,116 +62,15 @@ public class Policy {
     @Column(nullable = false, length = 3)
     private String currency;
 
+    // DB-managed (server_default now() / onupdate); never written by the app.
+    @Setter(AccessLevel.NONE)
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private OffsetDateTime createdAt;
 
+    @Setter(AccessLevel.NONE)
     @Column(name = "updated_at", nullable = false, insertable = false)
     private OffsetDateTime updatedAt;
 
     @OneToMany(mappedBy = "policy")
     private List<InsuredPerson> insuredPeople = new ArrayList<>();
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public String getPolicyNumber() {
-        return policyNumber;
-    }
-
-    public void setPolicyNumber(String policyNumber) {
-        this.policyNumber = policyNumber;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public PlanVariant getPlanVariant() {
-        return planVariant;
-    }
-
-    public void setPlanVariant(PlanVariant planVariant) {
-        this.planVariant = planVariant;
-    }
-
-    public String getTripPurpose() {
-        return tripPurpose;
-    }
-
-    public void setTripPurpose(String tripPurpose) {
-        this.tripPurpose = tripPurpose;
-    }
-
-    public String getDeclaredSportCategory() {
-        return declaredSportCategory;
-    }
-
-    public void setDeclaredSportCategory(String declaredSportCategory) {
-        this.declaredSportCategory = declaredSportCategory;
-    }
-
-    public LocalDate getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(LocalDate startDate) {
-        this.startDate = startDate;
-    }
-
-    public LocalDate getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(LocalDate endDate) {
-        this.endDate = endDate;
-    }
-
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-    public BigDecimal getPricePaid() {
-        return pricePaid;
-    }
-
-    public void setPricePaid(BigDecimal pricePaid) {
-        this.pricePaid = pricePaid;
-    }
-
-    public String getCurrency() {
-        return currency;
-    }
-
-    public void setCurrency(String currency) {
-        this.currency = currency;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
-
-    public OffsetDateTime getUpdatedAt() {
-        return updatedAt;
-    }
-
-    public List<InsuredPerson> getInsuredPeople() {
-        return insuredPeople;
-    }
-
-    public void setInsuredPeople(List<InsuredPerson> insuredPeople) {
-        this.insuredPeople = insuredPeople;
-    }
 }

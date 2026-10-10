@@ -11,9 +11,13 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "users")
+@Getter
+@Setter
 public class User {
 
     @Id
@@ -28,36 +32,4 @@ public class User {
 
     @OneToMany(mappedBy = "user")
     private List<Policy> policies = new ArrayList<>();
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public UUID getAuthUserId() {
-        return authUserId;
-    }
-
-    public void setAuthUserId(UUID authUserId) {
-        this.authUserId = authUserId;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
-        this.email = email;
-    }
-
-    public List<Policy> getPolicies() {
-        return policies;
-    }
-
-    public void setPolicies(List<Policy> policies) {
-        this.policies = policies;
-    }
 }

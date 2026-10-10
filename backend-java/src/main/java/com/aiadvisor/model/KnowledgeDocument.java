@@ -11,9 +11,14 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "knowledge_documents")
+@Getter
+@Setter
 public class KnowledgeDocument {
 
     @Id
@@ -39,66 +44,8 @@ public class KnowledgeDocument {
     @Column(name = "processing_status", nullable = false, length = 20)
     private String processingStatus;
 
+    // DB-managed (server_default now()); never written by the app.
+    @Setter(AccessLevel.NONE)
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private OffsetDateTime createdAt;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public InsuranceTermsVersion getTermsVersion() {
-        return termsVersion;
-    }
-
-    public void setTermsVersion(InsuranceTermsVersion termsVersion) {
-        this.termsVersion = termsVersion;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
-
-    public String getFileName() {
-        return fileName;
-    }
-
-    public void setFileName(String fileName) {
-        this.fileName = fileName;
-    }
-
-    public String getStoragePath() {
-        return storagePath;
-    }
-
-    public void setStoragePath(String storagePath) {
-        this.storagePath = storagePath;
-    }
-
-    public String getChecksum() {
-        return checksum;
-    }
-
-    public void setChecksum(String checksum) {
-        this.checksum = checksum;
-    }
-
-    public String getProcessingStatus() {
-        return processingStatus;
-    }
-
-    public void setProcessingStatus(String processingStatus) {
-        this.processingStatus = processingStatus;
-    }
-
-    public OffsetDateTime getCreatedAt() {
-        return createdAt;
-    }
 }

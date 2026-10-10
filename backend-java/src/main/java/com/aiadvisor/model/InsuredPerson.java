@@ -11,9 +11,13 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "insured_persons")
+@Getter
+@Setter
 public class InsuredPerson {
 
     @Id
@@ -29,36 +33,4 @@ public class InsuredPerson {
 
     @Column(name = "date_of_birth", nullable = false)
     private LocalDate dateOfBirth;
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public Policy getPolicy() {
-        return policy;
-    }
-
-    public void setPolicy(Policy policy) {
-        this.policy = policy;
-    }
-
-    public String getName() {
-        return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public LocalDate getDateOfBirth() {
-        return dateOfBirth;
-    }
-
-    public void setDateOfBirth(LocalDate dateOfBirth) {
-        this.dateOfBirth = dateOfBirth;
-    }
 }

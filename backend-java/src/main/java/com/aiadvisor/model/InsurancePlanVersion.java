@@ -14,9 +14,13 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "insurance_plan_versions")
+@Getter
+@Setter
 public class InsurancePlanVersion {
 
     @Id
@@ -42,60 +46,4 @@ public class InsurancePlanVersion {
 
     @OneToMany(mappedBy = "planVersion")
     private List<PlanVariant> variants = new ArrayList<>();
-
-    public Integer getId() {
-        return id;
-    }
-
-    public void setId(Integer id) {
-        this.id = id;
-    }
-
-    public InsurancePlan getPlan() {
-        return plan;
-    }
-
-    public void setPlan(InsurancePlan plan) {
-        this.plan = plan;
-    }
-
-    public InsuranceTermsVersion getTermsVersion() {
-        return termsVersion;
-    }
-
-    public void setTermsVersion(InsuranceTermsVersion termsVersion) {
-        this.termsVersion = termsVersion;
-    }
-
-    public Integer getVersion() {
-        return version;
-    }
-
-    public void setVersion(Integer version) {
-        this.version = version;
-    }
-
-    public LocalDate getValidFrom() {
-        return validFrom;
-    }
-
-    public void setValidFrom(LocalDate validFrom) {
-        this.validFrom = validFrom;
-    }
-
-    public LocalDate getValidTo() {
-        return validTo;
-    }
-
-    public void setValidTo(LocalDate validTo) {
-        this.validTo = validTo;
-    }
-
-    public List<PlanVariant> getVariants() {
-        return variants;
-    }
-
-    public void setVariants(List<PlanVariant> variants) {
-        this.variants = variants;
-    }
 }
