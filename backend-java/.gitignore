@@ -4,6 +4,9 @@ target/
 !**/src/main/**/target/
 !**/src/test/**/target/
 
+### Local env (never commit secrets; .env.example is committed) ###
+.env
+
 ### IntelliJ IDEA ###
 .idea/
 *.iws

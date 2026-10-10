@@ -10,12 +10,16 @@ spring:
   jackson:
     property-naming-strategy: SNAKE_CASE
 
-  # Database connection (Supabase Postgres). Provided via env vars so they stay
-  # out of source control and don't clash with the Python app's DATABASE_URL
-  # format. Spring binds these automatically:
-  #   SPRING_DATASOURCE_URL=jdbc:postgresql://POOLER_HOST:5432/postgres
+  # Standard Spring Boot datasource — HikariCP is auto-configured from these.
+  # Supply them as environment variables (never commit secrets): locally via
+  # backend-java/.env (see .env.example), in production via host env vars.
+  #   SPRING_DATASOURCE_URL=jdbc:postgresql://POOLER_HOST:5432/postgres?sslmode=require
   #   SPRING_DATASOURCE_USERNAME=postgres.PROJECT_REF
   #   SPRING_DATASOURCE_PASSWORD=YOUR_PASSWORD
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
 
   jpa:
     # Schema is owned by Alembic; Hibernate only verifies the entities match it.
