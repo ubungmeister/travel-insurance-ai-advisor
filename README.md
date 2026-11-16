@@ -47,3 +47,7 @@ Test it: [http://localhost:8000/health](http://localhost:8000/health) should ret
 ## Environment variables
 
 Copy `.env.example` to `.env` at the repo root. Fill in the values; `.env` files are gitignored and never committed. Both the backend and the frontend (Vite) read from this single root `.env`.
+
+## Database ERD
+
+See the [implemented database ERD](docs/current-database-erd.md).
