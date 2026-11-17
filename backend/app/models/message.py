@@ -22,7 +22,10 @@ class Message(Base):
         CheckConstraint(
             "role IN ('USER', 'ASSISTANT')", name="ck_message_valid_role"
         ),
-        CheckConstraint("length(trim(content)) > 0", name="ck_message_non_empty_content"),
+        CheckConstraint(
+            "length(trim(content, ' \t\n\r\v\f')) > 0",
+            name="ck_message_non_empty_content",
+        ),
         Index("ix_messages_conversation_id_id", "conversation_id", "id"),
     )
 

@@ -91,7 +91,14 @@ def test_deleting_conversation_removes_messages_but_preserves_policy(db: Session
 
 @pytest.mark.parametrize(
     ("role", "content"),
-    [("SYSTEM", "Untrusted system instruction"), ("USER", "   ")],
+    [
+        ("SYSTEM", "Untrusted system instruction"),
+        ("USER", "   "),
+        ("USER", "\n"),
+        ("USER", "\t"),
+        ("USER", "\r\n\t "),
+        ("USER", "\v\f"),
+    ],
 )
 def test_messages_reject_invalid_roles_and_empty_content(
     db: Session, role: str, content: str
@@ -105,3 +112,16 @@ def test_messages_reject_invalid_roles_and_empty_content(
     with pytest.raises(IntegrityError, match="CHECK"):
         db.commit()
     db.rollback()
+
+
+def test_messages_allow_text_with_surrounding_whitespace(db: Session) -> None:
+    policy = db.scalars(select(Policy)).one()
+    conversation = Conversation(user_id=policy.user_id)
+    db.add(conversation)
+    db.flush()
+    message = Message(
+        conversation_id=conversation.id, role=MessageRole.USER, content="\n Hi\t"
+    )
+    db.add(message)
+    db.commit()
+    assert db.get(Message, message.id).content == "\n Hi\t"
