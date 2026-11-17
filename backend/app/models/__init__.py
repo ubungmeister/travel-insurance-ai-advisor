@@ -1,4 +1,6 @@
 from app.models.coverage_type import CoverageType
+from app.models.conversation import Conversation
+from app.models.message import Message, MessageRole
 from app.models.insurance_plan import InsurancePlan
 from app.models.insurance_plan_version import InsurancePlanVersion
 from app.models.insurance_terms_version import InsuranceTermsVersion
@@ -12,6 +14,9 @@ from app.models.knowledge_document import (
     KnowledgeDocument,
 )
 __all__ = [
+    "Conversation",
+    "Message",
+    "MessageRole",
     "CoverageType",
     "InsurancePlan",
     "InsurancePlanVersion",

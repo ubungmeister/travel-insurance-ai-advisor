@@ -5,6 +5,7 @@ frontend/.vite/
 
 # Backend
 .venv/
+backend/.venv-local/
 backend/.venv-broken/
 __pycache__/
 *.pyc
