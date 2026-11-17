@@ -16,6 +16,59 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+_MERGED_COVERAGES_QUERY = """
+    WITH ranked_coverages AS (
+        SELECT
+            merge_map.keep_id,
+            source_coverage.coverage_type_id,
+            source_coverage.limit_amount,
+            source_coverage.currency,
+            ROW_NUMBER() OVER (
+                PARTITION BY merge_map.keep_id, source_coverage.coverage_type_id
+                ORDER BY
+                    CASE
+                        WHEN source_variant.sport_category = 'RECREATIONAL' THEN 0
+                        WHEN source_variant.sport_category IS NULL THEN 1
+                        WHEN source_variant.sport_category = 'WINTER' THEN 2
+                        WHEN source_variant.sport_category = 'RISKY' THEN 3
+                        ELSE 4
+                    END,
+                    source_variant.id
+            ) AS row_number
+        FROM plan_variant_merge_map merge_map
+        JOIN plan_variants source_variant ON source_variant.id = merge_map.old_id
+        JOIN variant_coverages source_coverage
+          ON source_coverage.plan_variant_id = source_variant.id
+    )
+    SELECT keep_id, coverage_type_id, limit_amount, currency
+    FROM ranked_coverages
+    WHERE row_number = 1
+"""
+
+_CHANGED_POLICY_BENEFITS_QUERY = """
+    SELECT p.id
+    FROM policies p
+    JOIN plan_variant_merge_map merge_map ON merge_map.old_id = p.plan_variant_id
+    WHERE EXISTS (
+        SELECT coverage_type_id, limit_amount, currency
+        FROM variant_coverages
+        WHERE plan_variant_id = p.plan_variant_id
+        EXCEPT
+        SELECT coverage_type_id, limit_amount, currency
+        FROM plan_variant_merged_coverages
+        WHERE keep_id = merge_map.keep_id
+    ) OR EXISTS (
+        SELECT coverage_type_id, limit_amount, currency
+        FROM plan_variant_merged_coverages
+        WHERE keep_id = merge_map.keep_id
+        EXCEPT
+        SELECT coverage_type_id, limit_amount, currency
+        FROM variant_coverages
+        WHERE plan_variant_id = p.plan_variant_id
+    )
+"""
+
+
 def upgrade() -> None:
     # Preserve the wording already associated with each existing plan release.
     op.add_column(
@@ -95,9 +148,11 @@ def upgrade() -> None:
         "available_to IS NULL OR available_to >= available_from",
     )
 
-    # Sport no longer selects a benefit schedule. Collapse legacy variants by
-    # plan version and territory, preferring recreational when old schedules
-    # disagree. Policy sport declarations remain unchanged.
+    # Freeze coverage writes until comparison and consolidation have committed.
+    op.execute("LOCK TABLE variant_coverages IN SHARE ROW EXCLUSIVE MODE")
+
+    # Sport no longer selects a benefit schedule. Prefer recreational, but
+    # never change the benefits of policies referencing any merged variant.
     op.drop_constraint(
         "uq_plan_variant_identity",
         "plan_variants",
@@ -124,37 +179,41 @@ def upgrade() -> None:
         """
     )
     op.execute(
+        "CREATE TEMPORARY TABLE plan_variant_merged_coverages ON COMMIT DROP AS "
+        + _MERGED_COVERAGES_QUERY
+    )
+    op.execute(
+        f"""
+        DO $$
+        DECLARE
+            affected_policy_ids text;
+        BEGIN
+            SELECT string_agg(affected.id::text, ', ' ORDER BY affected.id)
+            INTO affected_policy_ids
+            FROM (
+                {_CHANGED_POLICY_BENEFITS_QUERY}
+                ORDER BY p.id
+                LIMIT 10
+            ) affected;
+
+            IF affected_policy_ids IS NOT NULL THEN
+                RAISE EXCEPTION
+                    'Variant consolidation would change existing policy benefits. '
+                    'Affected policy IDs (first 10): %. Preserve their original '
+                    'schedules, or explicitly recreate/reseed disposable mock data.',
+                    affected_policy_ids;
+            END IF;
+        END;
+        $$
         """
-        WITH ranked_missing_coverages AS (
-            SELECT
-                merge_map.keep_id,
-                source_coverage.coverage_type_id,
-                source_coverage.limit_amount,
-                source_coverage.currency,
-                ROW_NUMBER() OVER (
-                    PARTITION BY merge_map.keep_id, source_coverage.coverage_type_id
-                    ORDER BY
-                        CASE
-                            WHEN source_variant.sport_category = 'RECREATIONAL' THEN 0
-                            WHEN source_variant.sport_category IS NULL THEN 1
-                            WHEN source_variant.sport_category = 'WINTER' THEN 2
-                            WHEN source_variant.sport_category = 'RISKY' THEN 3
-                            ELSE 4
-                        END,
-                        source_variant.id
-                ) AS row_number
-            FROM plan_variant_merge_map merge_map
-            JOIN plan_variants source_variant ON source_variant.id = merge_map.old_id
-            JOIN variant_coverages source_coverage
-              ON source_coverage.plan_variant_id = source_variant.id
-            WHERE merge_map.old_id <> merge_map.keep_id
-        )
+    )
+    op.execute(
+        """
         INSERT INTO variant_coverages
             (plan_variant_id, coverage_type_id, limit_amount, currency)
         SELECT
             keep_id, coverage_type_id, limit_amount, currency
-        FROM ranked_missing_coverages
-        WHERE row_number = 1
+        FROM plan_variant_merged_coverages
         ON CONFLICT (plan_variant_id, coverage_type_id) DO NOTHING
         """
     )
