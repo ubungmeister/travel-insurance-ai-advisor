@@ -57,7 +57,7 @@ def test_seed_is_idempotent() -> None:
     assert first_counts[InsurancePlan] == 4
     assert first_counts[InsurancePlanVersion] == 4
     assert first_counts[InsuranceTermsVersion] == 1
-    assert first_counts[PlanVariant] == 9
+    assert first_counts[PlanVariant] == 7
     assert first_counts[User] == 1
     assert first_counts[Policy] == 1
     assert first_counts[InsuredPerson] == 1

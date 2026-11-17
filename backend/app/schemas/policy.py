@@ -2,8 +2,8 @@ from datetime import date
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.plan_variant import SportCategory, Territory
-from app.models.policy import PolicyStatus, TripPurpose
+from app.models.plan_variant import Territory
+from app.models.policy import PolicyStatus, SportCategory, TripPurpose
 
 
 class PolicySummary(BaseModel):

@@ -44,6 +44,7 @@ def policy_api():
                 Policy(
                     user=user,
                     plan_variant_id=original.plan_variant_id,
+                    terms_version_id=original.terms_version_id,
                     policy_number=number,
                     trip_purpose=original.trip_purpose,
                     declared_sport_category=original.declared_sport_category,

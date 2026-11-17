@@ -20,6 +20,7 @@ from app.db.base import Base
 
 if TYPE_CHECKING:
     from app.models.insured_person import InsuredPerson
+    from app.models.insurance_terms_version import InsuranceTermsVersion
     from app.models.plan_variant import PlanVariant
     from app.models.user import User
 
@@ -33,6 +34,12 @@ class TripPurpose(StrEnum):
     VACATION = "VACATION"
     WORK_MANUAL = "WORK_MANUAL"
     WORK_NON_MANUAL = "WORK_NON_MANUAL"
+
+
+class SportCategory(StrEnum):
+    RECREATIONAL = "RECREATIONAL"
+    WINTER = "WINTER"
+    RISKY = "RISKY"
 
 
 class Policy(Base):
@@ -73,6 +80,10 @@ class Policy(Base):
             "ix_policies_plan_variant_id",
             "plan_variant_id",
         ),
+        Index(
+            "ix_policies_terms_version_id",
+            "terms_version_id",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -89,6 +100,11 @@ class Policy(Base):
 
     plan_variant_id: Mapped[int] = mapped_column(
         ForeignKey("plan_variants.id"),
+        nullable=False,
+    )
+
+    terms_version_id: Mapped[int] = mapped_column(
+        ForeignKey("insurance_terms_versions.id"),
         nullable=False,
     )
 
@@ -109,6 +125,12 @@ class Policy(Base):
 
     end_date: Mapped[date] = mapped_column(
         Date,
+        nullable=False,
+    )
+
+    issued_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
         nullable=False,
     )
 
@@ -145,6 +167,10 @@ class Policy(Base):
     )
 
     plan_variant: Mapped["PlanVariant"] = relationship(
+        back_populates="policies",
+    )
+
+    terms_version: Mapped["InsuranceTermsVersion"] = relationship(
         back_populates="policies",
     )
 
