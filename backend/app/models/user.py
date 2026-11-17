@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
+    from app.models.conversation import Conversation
     from app.models.policy import Policy
 
 
@@ -29,4 +30,9 @@ class User(Base):
 
     policies: Mapped[list["Policy"]] = relationship(
         back_populates="user",
+    )
+
+    conversations: Mapped[list["Conversation"]] = relationship(
+        back_populates="user",
+        foreign_keys="Conversation.user_id",
     )

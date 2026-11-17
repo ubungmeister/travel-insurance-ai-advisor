@@ -49,6 +49,7 @@ class Policy(Base):
             "policy_number",
             name="uq_policies_policy_number",
         ),
+        UniqueConstraint("user_id", "id", name="uq_policies_user_id_id"),
         CheckConstraint(
             "end_date >= start_date",
             name="ck_policy_valid_date_range",

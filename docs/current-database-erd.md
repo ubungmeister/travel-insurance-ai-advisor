@@ -5,6 +5,9 @@ This diagram describes the database implemented by the Python SQLAlchemy models 
 ~~~mermaid
 erDiagram
     users ||--o{ policies : owns
+    users ||--o{ conversations : owns
+    policies |o--o{ conversations : selected_for
+    conversations ||--o{ messages : contains
     policies ||--o{ insured_persons : insures
     insurance_plans ||--o{ insurance_plan_versions : has_versions
     insurance_plan_versions ||--o{ plan_variants : offers
@@ -18,6 +21,21 @@ erDiagram
         integer id PK
         uuid auth_user_id UK "nullable"
         varchar email UK "max 255"
+    }
+
+    conversations {
+        integer id PK
+        integer user_id FK
+        integer selected_policy_id FK "nullable"
+        timestamptz created_at
+    }
+
+    messages {
+        integer id PK
+        integer conversation_id FK
+        varchar role "USER or ASSISTANT"
+        text content
+        timestamptz created_at
     }
 
     policies {
@@ -115,4 +133,6 @@ Sport and trip purpose are policy-level declarations. They do not select a diffe
 - insurance_plan_versions.available_from/available_to describe the product release's issue availability, not the insured trip dates.
 - Seed data is for the demo catalogue. Coverage rows for a variant referenced by a policy cannot be inserted, updated, or deleted; create a new plan version and variant when limits change.
 - Migration `e91a6c4b7d20` consolidates legacy sport-specific variants for every plan-version/territory group, preferring the recreational schedule when present. Before changing coverage rows or policy references, it compares each policy's existing coverage types, amounts, and currencies with the proposed merged schedule. Any difference aborts the migration and reports up to 10 affected policy IDs, including policies already referencing the retained variant. Preserve those schedules or explicitly recreate/reseed disposable mock data; the migration never resets data automatically. It cannot be downgraded to the previous differing sport schedules.
-- knowledge_documents stores document metadata and processing status. Document chunks, embeddings, conversations, messages, and citations are not yet implemented.
+- Conversations have an owner and an optional selected policy. The composite foreign key `(user_id, selected_policy_id)` references the unique `(user_id, id)` pair on policies, preventing selection of another user's policy. Each message belongs to one conversation; deleting a conversation cascades to its messages.
+- Conversation/message persistence is implemented at the schema level. Automatic selection, selection-once enforcement, ownership checks on API requests, and switching to a new conversation will be added in the conversation service/API step; the existing chat endpoint is still stateless.
+- knowledge_documents stores document metadata and processing status. Document chunks, embeddings, and citations are not yet implemented.
