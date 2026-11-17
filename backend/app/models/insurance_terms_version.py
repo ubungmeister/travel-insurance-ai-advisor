@@ -7,8 +7,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db.base import Base
 
 if TYPE_CHECKING:
-    from app.models.insurance_plan_version import InsurancePlanVersion
     from app.models.knowledge_document import KnowledgeDocument
+    from app.models.policy import Policy
 
 
 class InsuranceTermsVersion(Base):
@@ -41,7 +41,7 @@ class InsuranceTermsVersion(Base):
         nullable=True,
     )
 
-    plan_versions: Mapped[list["InsurancePlanVersion"]] = relationship(
+    policies: Mapped[list["Policy"]] = relationship(
         back_populates="terms_version",
     )
 

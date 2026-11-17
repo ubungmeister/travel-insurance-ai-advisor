@@ -33,7 +33,6 @@ PLAN_VARIANTS = (
     {
         "plan": "Standard",
         "territory": "EUROPE",
-        "sport_category": None,
         "coverages": {
             "MEDICAL_EXPENSES": "5000000",
             "DENTAL_TREATMENT": "5000",
@@ -42,7 +41,6 @@ PLAN_VARIANTS = (
     {
         "plan": "Dominant",
         "territory": "EUROPE",
-        "sport_category": None,
         "coverages": {
             "MEDICAL_EXPENSES": "15000000",
             "DENTAL_TREATMENT": "10000",
@@ -56,7 +54,6 @@ PLAN_VARIANTS = (
     {
         "plan": "Premiant",
         "territory": "EUROPE",
-        "sport_category": None,
         "coverages": {
             "MEDICAL_EXPENSES": "100000000",
             "DENTAL_TREATMENT": "20000",
@@ -70,7 +67,6 @@ PLAN_VARIANTS = (
     {
         "plan": "Standard",
         "territory": "WORLD",
-        "sport_category": None,
         "coverages": {
             "MEDICAL_EXPENSES": "5000000",
             "DENTAL_TREATMENT": "10000",
@@ -79,7 +75,6 @@ PLAN_VARIANTS = (
     {
         "plan": "Dominant",
         "territory": "WORLD",
-        "sport_category": None,
         "coverages": {
             "MEDICAL_EXPENSES": "15000000",
             "DENTAL_TREATMENT": "20000",
@@ -93,7 +88,6 @@ PLAN_VARIANTS = (
     {
         "plan": "Premiant",
         "territory": "WORLD",
-        "sport_category": None,
         "coverages": {
             "MEDICAL_EXPENSES": "100000000",
             "DENTAL_TREATMENT": "40000",
@@ -107,31 +101,10 @@ PLAN_VARIANTS = (
     {
         "plan": "Domestic",
         "territory": "CZECH_REPUBLIC",
-        "sport_category": "RECREATIONAL",
         "coverages": {
             "PERMANENT_INJURY": "400000",
             "LIABILITY": "5000000",
             "BAGGAGE": "15000",
-        },
-    },
-    {
-        "plan": "Domestic",
-        "territory": "CZECH_REPUBLIC",
-        "sport_category": "WINTER",
-        "coverages": {
-            "PERMANENT_INJURY": "600000",
-            "LIABILITY": "15000000",
-            "BAGGAGE": "25000",
-        },
-    },
-    {
-        "plan": "Domestic",
-        "territory": "CZECH_REPUBLIC",
-        "sport_category": "RISKY",
-        "coverages": {
-            "PERMANENT_INJURY": "600000",
-            "LIABILITY": "15000000",
-            "BAGGAGE": "25000",
         },
     },
 )
@@ -179,7 +152,7 @@ def _get_or_create_terms_version(db: Session, code: str) -> InsuranceTermsVersio
 
 
 def _get_or_create_plan_version(
-    db: Session, plan: InsurancePlan, terms_version: InsuranceTermsVersion
+    db: Session, plan: InsurancePlan
 ) -> InsurancePlanVersion:
     plan_version = db.scalar(
         select(InsurancePlanVersion).where(
@@ -190,41 +163,30 @@ def _get_or_create_plan_version(
     if plan_version is None:
         plan_version = InsurancePlanVersion(
             plan_id=plan.id,
-            terms_version_id=terms_version.id,
             version=1,
-            valid_from=date(2026, 1, 1),
-            valid_to=None,
+            available_from=date(2026, 1, 1),
+            available_to=None,
         )
         db.add(plan_version)
         db.flush()
-    else:
-        plan_version.terms_version_id = terms_version.id
     return plan_version
 
 
 def _get_or_create_variant(
     db: Session,
-    plan: InsurancePlanVersion,
+    plan_version: InsurancePlanVersion,
     territory: str,
-    sport_category: str | None,
 ) -> PlanVariant:
-    sport_filter = (
-        PlanVariant.sport_category.is_(None)
-        if sport_category is None
-        else PlanVariant.sport_category == sport_category
-    )
     variant = db.scalar(
         select(PlanVariant).where(
-            PlanVariant.plan_version_id == plan.id,
+            PlanVariant.plan_version_id == plan_version.id,
             PlanVariant.territory == territory,
-            sport_filter,
         )
     )
     if variant is None:
         variant = PlanVariant(
-            plan_version_id=plan.id,
+            plan_version_id=plan_version.id,
             territory=territory,
-            sport_category=sport_category,
         )
         db.add(variant)
         db.flush()
@@ -233,28 +195,19 @@ def _get_or_create_variant(
 
 def _seed_product_catalogue(
     db: Session,
-) -> dict[tuple[str, str, str | None], PlanVariant]:
+) -> tuple[dict[tuple[str, str], PlanVariant], InsuranceTermsVersion]:
     coverage_types = _seed_coverage_types(db)
     terms_version = _get_or_create_terms_version(db, "VPP_CP_2021")
-    variants: dict[tuple[str, str, str | None], PlanVariant] = {}
+    variants: dict[tuple[str, str], PlanVariant] = {}
 
     for definition in PLAN_VARIANTS:
         plan_name = str(definition["plan"])
         territory = str(definition["territory"])
-        sport_category = definition["sport_category"]
-        assert sport_category is None or isinstance(sport_category, str)
 
         insurance_plan = _get_or_create_insurance_plan(db, plan_name)
-        plan_version = _get_or_create_plan_version(
-            db, insurance_plan, terms_version
-        )
-        variant = _get_or_create_variant(
-            db,
-            plan_version,
-            territory,
-            sport_category,
-        )
-        variants[(plan_name, territory, sport_category)] = variant
+        plan_version = _get_or_create_plan_version(db, insurance_plan)
+        variant = _get_or_create_variant(db, plan_version, territory)
+        variants[(plan_name, territory)] = variant
 
         coverages = definition["coverages"]
         assert isinstance(coverages, dict)
@@ -267,24 +220,23 @@ def _seed_product_catalogue(
                 )
             )
             if variant_coverage is None:
-                variant_coverage = VariantCoverage(
-                    plan_variant_id=variant.id,
-                    coverage_type_id=coverage_type.id,
-                    limit_amount=Decimal(amount),
-                    currency="CZK",
+                db.add(
+                    VariantCoverage(
+                        plan_variant_id=variant.id,
+                        coverage_type_id=coverage_type.id,
+                        limit_amount=Decimal(amount),
+                        currency="CZK",
+                    )
                 )
-                db.add(variant_coverage)
-            else:
-                variant_coverage.limit_amount = Decimal(amount)
-                variant_coverage.currency = "CZK"
 
     db.flush()
-    return variants
+    return variants, terms_version
 
 
 def _seed_demo_policy(
     db: Session,
-    variants: dict[tuple[str, str, str | None], PlanVariant],
+    variants: dict[tuple[str, str], PlanVariant],
+    terms_version: InsuranceTermsVersion,
 ) -> None:
     email = "demo@example.com"
     user = db.scalar(select(User).where(User.email == email))
@@ -293,7 +245,7 @@ def _seed_demo_policy(
         db.add(user)
         db.flush()
 
-    variant = variants[("Dominant", "EUROPE", None)]
+    variant = variants[("Dominant", "EUROPE")]
     policy = db.scalar(
         select(Policy).where(
             Policy.user_id == user.id,
@@ -307,6 +259,7 @@ def _seed_demo_policy(
             policy_number="POL-2026-000001",
             user_id=user.id,
             plan_variant_id=variant.id,
+            terms_version_id=terms_version.id,
             trip_purpose="VACATION",
             declared_sport_category="RECREATIONAL",
             start_date=date(2026, 8, 26),
@@ -319,6 +272,7 @@ def _seed_demo_policy(
         db.flush()
     else:
         policy.policy_number = "POL-2026-000001"
+        policy.terms_version_id = terms_version.id
         policy.trip_purpose = "VACATION"
         policy.declared_sport_category = "RECREATIONAL"
         policy.status = "ISSUED"
@@ -343,8 +297,8 @@ def _seed_demo_policy(
 
 
 def seed_database(db: Session) -> None:
-    variants = _seed_product_catalogue(db)
-    _seed_demo_policy(db, variants)
+    variants, terms_version = _seed_product_catalogue(db)
+    _seed_demo_policy(db, variants, terms_version)
 
 
 def main() -> None:

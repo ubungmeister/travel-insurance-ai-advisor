@@ -40,7 +40,7 @@ def test_plan_version_has_natural_key_constraint() -> None:
     assert list(constraint.columns.keys()) == ["plan_id", "version"]
 
 
-def test_plan_variant_has_null_safe_natural_key_constraint() -> None:
+def test_plan_variant_has_natural_key_constraint() -> None:
     constraint = _unique_constraint(
         PlanVariant,
         "uq_plan_variant_identity",
@@ -49,12 +49,7 @@ def test_plan_variant_has_null_safe_natural_key_constraint() -> None:
     assert list(constraint.columns.keys()) == [
         "plan_version_id",
         "territory",
-        "sport_category",
     ]
-    assert (
-        constraint.dialect_options["postgresql"]["nulls_not_distinct"]
-        is True
-    )
 
 
 def test_plan_version_rejects_invalid_version_and_dates() -> None:
@@ -64,8 +59,10 @@ def test_plan_version_rejects_invalid_version_and_dates() -> None:
     ).sqltext.text == "version > 0"
     assert _check_constraint(
         InsurancePlanVersion,
-        "ck_insurance_plan_version_valid_dates",
-    ).sqltext.text == "valid_to IS NULL OR valid_to >= valid_from"
+        "ck_insurance_plan_version_availability_dates",
+    ).sqltext.text == (
+        "available_to IS NULL OR available_to >= available_from"
+    )
 
 
 def test_terms_version_has_natural_key_and_valid_dates_constraint() -> None:

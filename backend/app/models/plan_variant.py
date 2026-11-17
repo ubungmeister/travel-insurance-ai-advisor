@@ -18,29 +18,17 @@ class Territory(StrEnum):
     CZECH_REPUBLIC = "CZECH_REPUBLIC"
 
 
-class SportCategory(StrEnum):
-    RECREATIONAL = "RECREATIONAL"
-    WINTER = "WINTER"
-    RISKY = "RISKY"
-
-
 class PlanVariant(Base):
     __tablename__ = "plan_variants"
     __table_args__ = (
         UniqueConstraint(
             "plan_version_id",
             "territory",
-            "sport_category",
             name="uq_plan_variant_identity",
-            postgresql_nulls_not_distinct=True,
         ),
         CheckConstraint(
             "territory IN ('EUROPE', 'WORLD', 'CZECH_REPUBLIC')",
             name="ck_plan_variant_valid_territory",
-        ),
-        CheckConstraint(
-            "sport_category IS NULL OR sport_category IN ('RECREATIONAL', 'WINTER', 'RISKY')",
-            name="ck_plan_variant_valid_sport_category",
         ),
     )
 
@@ -54,11 +42,6 @@ class PlanVariant(Base):
     territory: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
-    )
-
-    sport_category: Mapped[str | None] = mapped_column(
-        String(50),
-        nullable=True,
     )
 
     plan_version: Mapped["InsurancePlanVersion"] = relationship(
