@@ -51,3 +51,19 @@ Copy `.env.example` to `.env` at the repo root. Fill in the values; `.env` files
 ## Database ERD
 
 See the [implemented database ERD](docs/current-database-erd.md).
+
+## Conversation creation
+
+`POST /api/v1/conversations` requires a Bearer access token and no request body.
+The backend uses only the authenticated user's linked policies:
+
+- No policies: HTTP 200, `status: "no_policies"`, null `conversation_id` and
+  `selected_policy`, empty `policy_choices`. No conversation is saved.
+- One policy: HTTP 201, `status: "ready"`, a saved `conversation_id`, the
+  `selected_policy` summary, and empty `policy_choices`.
+- Multiple policies: HTTP 201, `status: "selection_required"`, a saved
+  `conversation_id`, null `selected_policy`, and owned `policy_choices`.
+
+Policy summaries include the policy number, plan, territory, and travel dates.
+Creation does not save messages. Policy selection, history, and persisted chat
+endpoints are not implemented yet; `/api/v1/chat` remains a stateless mock.
