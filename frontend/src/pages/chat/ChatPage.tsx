@@ -1,14 +1,16 @@
-import { HealthStatus, LogoutButton } from '../../components'
-import { ChatForm } from '../../forms'
+import { ChatSession, HealthStatus, LogoutButton } from '../../components'
+import { useAuthStore } from '../../store'
 
 export function ChatPage() {
+  const userId = useAuthStore((state) => state.user?.id)
+
   return (
     <>
       <h1>Travel Insurance Advisor</h1>
 
       <LogoutButton />
       <HealthStatus />
-      <ChatForm />
+      {userId && <ChatSession key={userId} />}
     </>
   )
 }

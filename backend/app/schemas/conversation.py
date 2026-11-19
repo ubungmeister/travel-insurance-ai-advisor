@@ -1,8 +1,14 @@
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.schemas.policy import PolicySummary
+
+
+class ConversationCreateRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    policy_id: int | None = Field(default=None, gt=0, strict=True)
 
 
 class ConversationCreateResponse(BaseModel):
