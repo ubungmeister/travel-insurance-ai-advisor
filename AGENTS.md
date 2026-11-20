@@ -13,7 +13,7 @@ For architecture work, do read-only discovery first. Present options, a recommen
 
 ## Project context (AI Advisor)
 - This is an early-stage travel-insurance advisor with a React + TypeScript + Vite frontend (`frontend/`) and a FastAPI backend (`backend/`).
-- Current behavior: users can authenticate, start a conversation with an owned policy (auto-selected for one policy or chosen for multiple), and send mock chat messages. No-policy accounts see an empty state. Chat history APIs, persisted messages, and real coverage/LLM/RAG analysis are not implemented yet.
+- Current behavior: users authenticate, resume their most recent conversation, reopen history, or start a new conversation with an owned policy (auto-selected for one policy or chosen for multiple). User messages and mock replies are persisted. No-policy accounts see an empty state. Real coverage/LLM/RAG analysis is not implemented.
 - Treat `README.md` and `docs/current-database-erd.md` as the current product and data-model references. Keep them aligned when behavior or schema changes.
 
 ## Key areas
@@ -24,9 +24,15 @@ For architecture work, do read-only discovery first. Present options, a recommen
 ## Existing behavior and contracts
 - Supabase handles browser sign-in/session. The frontend currently signs in/out directly via the Supabase client, while the backend also exposes proxy auth endpoints at `/api/auth/login`, `/api/auth/refresh`, `/api/auth/logout`, and `/api/auth/me`. The frontend API client attaches the Supabase access token, and protected backend routes validate bearer JWTs.
 - `GET /api/v1/policies` lists the authenticated user's policies.
-- After login, show the chat immediately and resolve policies automatically. Show choices only for multiple policies; keep sending disabled until a bound conversation exists. Policy controls and the chat form are siblings, not a start-screen wrapper.
+- Saved chats use `/chat/:conversationId`; exact URL reads must not fall back to another chat. `/chat/new` is a browser draft and only reads owned policies until Send. History/policy controls and the chat form remain siblings.
 - `POST /api/v1/conversations` accepts an optional `policy_id`. Without a choice it returns `no_policies` (200, no save), `ready` (201, one policy auto-selected and saved), or `selection_required` (200, owned choices, no save). An explicit owned choice creates a bound conversation (201); unknown/other-user IDs return the same 404. Never trust a client-supplied policy ID without ownership verification.
-- `POST /api/v1/chat` is authenticated but currently stateless and returns a mock reply; do not assume conversation/message persistence or real insurance analysis exists.
+- `POST /api/v1/chat` requires `request_id` (UUID), `message`, and exactly one of `policy_id` or `conversation_id`. It verifies ownership and atomically claims the user-scoped receipt and saves the mock turn (plus a conversation on first Send). Matching replays return the original result, changed payloads return 409. Do not hold a database lock during future external inference.
+- `GET /api/v1/conversations` lists owned conversations by latest activity descending; `GET /api/v1/conversations/{id}` returns owned detail and messages by ID ascending. Foreign/missing IDs both return 404. Keep drafts and immutable pending requests in account/chat-scoped tab storage, without transcripts or tokens. Manual retry reuses the same payload. Purge on logout or account change, not expiry for the same account.
+
+## Code comments and docstrings
+- When adding or changing a non-obvious hook, standalone function, or stateful component, add or update its documentation: `/** ... */` above the declaration in TypeScript/React or a docstring inside the declaration in Python.
+- Explain what it is responsible for, why it is designed that way, and any assumptions or safeguards a future change must preserve (such as lifecycle, ownership, retries, or transaction boundaries). Use enough detail to be useful without narrating the implementation.
+- Keep these blocks current in the same change as the behavior they describe. Skip obvious components, wrappers, and helpers; use short inline comments only where the local reason is not clear.
 
 ## PR review priorities
 - **Authentication and ownership:** check JWT validation and protected-route coverage. Ensure every policy/conversation access is scoped to the authenticated user and cannot cross user boundaries.

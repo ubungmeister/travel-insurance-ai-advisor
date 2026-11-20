@@ -1,4 +1,5 @@
 import { apiRequest } from '../../lib/api-client'
+import type { ChatMessage } from '../chat/chat-api'
 
 export interface PolicySummary {
   policy_id: number
@@ -27,9 +28,52 @@ export type ConversationCreateResponse =
       policy_choices: PolicySummary[]
     }
 
-export function createConversation(policyId?: number) {
+export function createConversation(policyId?: number, signal?: AbortSignal) {
   return apiRequest<ConversationCreateResponse>('/api/v1/conversations', {
     method: 'POST',
+    signal,
     body: JSON.stringify(policyId === undefined ? {} : { policy_id: policyId }),
+  })
+}
+
+export interface ConversationSummary {
+  conversation_id: number
+  selected_policy: PolicySummary | null
+  created_at: string
+  last_activity_at: string
+}
+
+export interface ConversationDetail {
+  conversation_id: number
+  selected_policy: PolicySummary | null
+  created_at: string
+  messages: ChatMessage[]
+}
+
+export function listConversations(signal?: AbortSignal, accountId?: string) {
+  return apiRequest<ConversationSummary[]>('/api/v1/conversations', {
+    signal,
+    accountId,
+    cache: 'no-store',
+  })
+}
+
+export function getConversation(
+  id: number,
+  signal?: AbortSignal,
+  accountId?: string,
+) {
+  return apiRequest<ConversationDetail>(`/api/v1/conversations/${id}`, {
+    signal,
+    accountId,
+    cache: 'no-store',
+  })
+}
+
+export function listPolicies(signal?: AbortSignal, accountId?: string) {
+  return apiRequest<PolicySummary[]>('/api/v1/policies', {
+    signal,
+    accountId,
+    cache: 'no-store',
   })
 }

@@ -78,22 +78,77 @@ request fields return HTTP 422. `GET /api/v1/policies` remains available for
 listing owned policies (including past/future or cancelled policies).
 
 Policy summaries include the policy number, plan, territory, and travel dates.
-After login, the chat is visible immediately and policy resolution starts
-automatically. A sole policy is selected automatically; multiple policies appear
-as choices above the chat with plan/version, territory, travel dates, and status.
-No-policy accounts see account/support guidance. Sending is disabled until a
-bound conversation is created. Policy controls and the chat form are separate
-siblings, not a start-screen wrapper. Refreshing the page resets this UI and
-resolves policies again; for a single-policy account this creates a new
-conversation, not history.
+`POST /api/v1/conversations` is retained for existing API clients. The browser
+does not call it: **New chat** opens `/chat/new`, where `GET /api/v1/policies`
+supplies owned choices and a sole policy is auto-selected. Selecting a policy
+or typing a draft does not create a database conversation. No-policy accounts
+see account/support guidance.
 
-Creation does not save messages. `/api/v1/chat` remains an authenticated,
-stateless mock: it does not consume the conversation ID or analyze the selected
-policy. History, persisted messages, RAG, and real coverage advice are out of scope.
+Saved chats use `/chat/:conversationId`. Refresh loads that exact conversation;
+invalid, missing or foreign IDs show an unavailable state, not another chat.
+The home route resumes a local new-chat draft if present, otherwise the most
+recently active saved chat, or `/chat/new` if history is empty. The history
+selector can reopen an older chat. Production hosting must serve the SPA's
+`index.html` for `/chat/*` as well as `/`.
+
+## Persisted mock chat
+
+All endpoints below require a Bearer access token and derive ownership from its
+verified UUID, not a client-supplied user ID:
+
+- `GET /api/v1/conversations`: owned summaries, latest activity first (latest
+  message timestamp, or creation timestamp for empty conversations; ties use
+  descending conversation ID). Summaries include `conversation_id`,
+  `selected_policy`, `created_at`, and `last_activity_at`.
+- `GET /api/v1/conversations/{id}`: `conversation_id`, `selected_policy`,
+  `created_at`, and `messages` ordered by ascending message ID. Each message has
+  `id`, `role` (`USER` or `ASSISTANT`), `content`, and `created_at`.
+- `POST /api/v1/chat` requires a UUID `request_id`, `message`, and exactly one
+  positive integer target: `policy_id` for a first turn or `conversation_id` for
+  a saved chat. The backend verifies ownership and atomically saves any new
+  conversation, user message, and existing `(mocked)` assistant reply. HTTP 200
+  returns `conversation_id`, `reply`, and the two saved `messages`. Input is
+  limited to 2000 characters and trimmed for display; invalid input is HTTP 422.
+- The database reserves `(user_id, request_id)` in the same transaction. An
+  exact replay returns the original IDs and turn, including when two requests
+  race; a changed target or exact message returns HTTP 409. A new UUID is a
+  deliberate new send, even for identical text. A deleted result is not recreated.
+
+Unknown and other-user conversation IDs both return HTTP 404 with
+`detail: "Conversation not found"`. Legacy conversations without a selected
+policy can be read but reject sends with HTTP 409; use **New chat** to select a
+policy. Creation alone still saves no messages.
+
+Tab-scoped `sessionStorage` stores only the editable draft, selected policy,
+and the exact pending request for each account and chat. It is not secure
+storage; no auth token or server transcript is stored there. Explicit logout
+and account changes clear chat data. Explicit logout also clears other tabs for
+the same account using an opaque logout marker in `localStorage`; no draft or
+message text is shared between tabs. Session expiry preserves recovery data
+for the same account after reauthentication.
+
+If the browser cannot confirm a send, **Retry pending message** resends the
+original UUID and payload. Refresh never resends, and offline clicks do not
+queue sends. Confirmation clears only the matching recovery record and
+preserves later typing. First-send confirmation opens the saved URL, and
+message IDs prevent duplicate transcript entries on replay. A rejected send
+(`404`, `409`, or `422`) can instead be restored for editing or discarded.
+Restore is available when the composer is empty, so it cannot overwrite newer
+typing. Confirmed sends refresh the history list from the server.
+
+Apply Alembic revision `a31b6d2e90fc` (`alembic upgrade head` from `backend/`)
+before deploying the new chat endpoint. Coordinate backend and frontend deploys:
+older chat clients do not send the now-required request UUID. PostgreSQL row
+locking serializes existing-conversation mock turns. Do not hold this lock
+while waiting for a future external inference request.
+There is no pagination or live cross-device synchronization in this milestone.
+Replies remain mocked: no LLM, RAG, streaming, or real coverage advice is added.
 
 ## Verification
 
 - Backend (from `backend/`, with dependencies/configuration available): `python -m pytest`.
 - Frontend (from `frontend/`): `npm test`, `npm run lint`, `npm run build`.
-- Frontend tests use Node's test runner with Vite SSR to check rendered
-  start/empty/selection/loading/error/ready states; they are not browser E2E tests.
+- Frontend tests use Node's test runner, Vite SSR, React test renderer, and
+  HTTP-boundary stubs to check exact URL loading, tab drafts and account
+  scoping, offline behavior, lost-response recovery and transcript deduplication.
+  They are not live browser E2E tests.

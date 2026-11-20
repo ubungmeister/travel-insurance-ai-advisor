@@ -1,8 +1,14 @@
 import { ChatSession, HealthStatus, LogoutButton } from '../../components'
 import { useAuthStore } from '../../store'
+import { useNavigate, useParams } from 'react-router-dom'
 
 export function ChatPage() {
   const userId = useAuthStore((state) => state.user?.id)
+  const draftEpoch = useAuthStore((state) => state.draftEpoch)
+  const { conversationId } = useParams()
+  const navigate = useNavigate()
+
+  console.log('conversationId', conversationId, 'draftEpoch.', draftEpoch)
 
   return (
     <>
@@ -10,7 +16,14 @@ export function ChatPage() {
 
       <LogoutButton />
       <HealthStatus />
-      {userId && <ChatSession key={userId} />}
+      {userId && (
+        <ChatSession
+          key={`${userId}:${conversationId ?? 'home'}:${draftEpoch}`}
+          accountId={userId}
+          target={conversationId}
+          navigate={(path, replace) => navigate(path, { replace })}
+        />
+      )}
     </>
   )
 }

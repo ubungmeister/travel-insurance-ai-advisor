@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
 
-from app.dependencies.authentication import get_current_user
+from app.db.session import get_db
+from app.dependencies.authentication import CurrentUser, get_current_user
 from app.schemas.chat import ChatRequest, ChatResponse
-from app.services.chat_service import generate_reply
+from app.services.chat_service import send_message
 
 router = APIRouter(prefix="/api/v1", tags=["chat"])
 
@@ -10,8 +12,10 @@ router = APIRouter(prefix="/api/v1", tags=["chat"])
 @router.post(
     "/chat",
     response_model=ChatResponse,
-    dependencies=[Depends(get_current_user)],
 )
-def chat(request: ChatRequest):
-    reply = generate_reply(request.message)
-    return ChatResponse(reply=reply)
+def chat(
+    request: ChatRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    return send_message(db, current_user.auth_user_id, request)

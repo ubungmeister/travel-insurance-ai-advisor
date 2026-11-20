@@ -8,6 +8,10 @@ erDiagram
     users ||--o{ conversations : owns
     policies |o--o{ conversations : selected_for
     conversations ||--o{ messages : contains
+    users ||--o{ chat_receipts : owns
+    conversations |o--o{ chat_receipts : records_result
+    messages |o--o{ chat_receipts : records_user_message
+    messages |o--o{ chat_receipts : records_assistant_message
     policies ||--o{ insured_persons : insures
     insurance_plans ||--o{ insurance_plan_versions : has_versions
     insurance_plan_versions ||--o{ plan_variants : offers
@@ -36,6 +40,15 @@ erDiagram
         varchar role "USER or ASSISTANT"
         text content
         timestamptz created_at
+    }
+
+    chat_receipts {
+        integer user_id PK, FK
+        uuid request_id PK
+        varchar fingerprint "SHA-256 of exact target and message"
+        integer conversation_id FK "nullable"
+        integer user_message_id FK "nullable"
+        integer assistant_message_id FK "nullable"
     }
 
     policies {
@@ -134,5 +147,6 @@ Sport and trip purpose are policy-level declarations. They do not select a diffe
 - Seed data is for the demo catalogue. Coverage rows for a variant referenced by a policy cannot be inserted, updated, or deleted; create a new plan version and variant when limits change.
 - Migration `e91a6c4b7d20` consolidates legacy sport-specific variants for every plan-version/territory group, preferring the recreational schedule when present. Before changing coverage rows or policy references, it compares each policy's existing coverage types, amounts, and currencies with the proposed merged schedule. Any difference aborts the migration and reports up to 10 affected policy IDs, including policies already referencing the retained variant. Preserve those schedules or explicitly recreate/reseed disposable mock data; the migration never resets data automatically. It cannot be downgraded to the previous differing sport schedules.
 - Conversations have an owner and an optional selected policy. The composite foreign key `(user_id, selected_policy_id)` references the unique `(user_id, id)` pair on policies, preventing selection of another user's policy. Each message belongs to one conversation; deleting a conversation cascades to its messages.
-- Conversation/message persistence is implemented at the schema level. The conversation-creation API verifies ownership, auto-selects a sole policy, and returns choices without saving for multiple policies. An explicit owned policy choice creates a bound conversation; no-policy accounts create nothing. The frontend gates mock chat on successful creation and displays the selected policy. There are no policy-switching/history/message-persistence endpoints; the existing chat endpoint is still stateless and does not use conversation context.
+- `chat_receipts` is added by revision `a31b6d2e90fc`. The `(user_id, request_id)` primary key reserves a send in the same transaction as the first conversation (if needed) and USER/ASSISTANT messages. The receipt references the saved rows rather than duplicating content. Deleting a result nulls its reference without freeing its request ID; deleting the user cascades to receipts.
+- History lists only owned conversations by latest activity (message timestamp or creation time, then descending conversation ID); detail reads return messages by ascending ID. The browser refreshes the exact saved URL or restores a local new-chat draft. Legacy unbound conversations can be read but cannot receive messages. Real coverage analysis and LLM/RAG remain unimplemented.
 - knowledge_documents stores document metadata and processing status. Document chunks, embeddings, and citations are not yet implemented.

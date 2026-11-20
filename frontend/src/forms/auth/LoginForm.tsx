@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 
 import { useLogin } from '../../hooks'
 
@@ -7,6 +7,12 @@ export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const navigate = useNavigate()
+  const requestedPath: unknown = useLocation().state?.returnTo
+  const returnTo =
+    typeof requestedPath === 'string' &&
+    /^\/chat\/[^/\\?#]+$/.test(requestedPath)
+      ? requestedPath
+      : '/'
   const { mutate, isPending, isError, error } = useLogin()
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -14,7 +20,10 @@ export function LoginForm() {
 
     if (!email.trim() || !password) return
 
-    mutate({ email, password }, { onSuccess: () => navigate('/') })
+    mutate(
+      { email, password },
+      { onSuccess: () => navigate(returnTo, { replace: true }) },
+    )
   }
 
   return (
