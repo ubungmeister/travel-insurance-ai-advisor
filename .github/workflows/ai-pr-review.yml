@@ -1,0 +1,169 @@
+name: AI PR Review
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+
+permissions: {}
+
+concurrency:
+  group: ai-pr-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    name: Review PR changes
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      report: ${{ steps.codex.outputs.final-message }}
+    steps:
+      - name: Check out the trusted base branch
+        uses: actions/checkout@v5
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Fetch PR diff and metadata as data
+        uses: actions/github-script@v7
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        with:
+          script: |
+            const fs = require('fs');
+            const pullNumber = Number(process.env.PR_NUMBER);
+            if (!Number.isInteger(pullNumber) || pullNumber < 1) {
+              throw new Error('Invalid pull request number.');
+            }
+            const response = await github.request(
+              'GET /repos/{owner}/{repo}/pulls/{pull_number}',
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: pullNumber,
+                headers: { accept: 'application/vnd.github.diff' },
+              },
+            );
+            if (typeof response.data !== 'string') {
+              throw new Error('GitHub did not return a text diff.');
+            }
+            fs.writeFileSync('.codex-review.diff', response.data, { mode: 0o600 });
+            const pull = context.payload.pull_request;
+            fs.writeFileSync(
+              '.codex-review.pr.json',
+              JSON.stringify({
+                number: pull.number,
+                title: pull.title,
+                body: pull.body || '',
+                base_sha: pull.base.sha,
+                head_sha: pull.head.sha,
+                author: pull.user.login,
+              }),
+              { mode: 0o600 },
+            );
+
+      - name: Check OpenAI API key is configured
+        shell: bash
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::Add OPENAI_API_KEY under repository Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+      - name: Review with Codex
+        id: codex
+        uses: openai/codex-action@v1
+        with:
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          prompt-file: .github/pr-review-prompt.md
+          output-schema-file: .github/pr-review-schema.json
+          model: gpt-5.5
+          effort: high
+          permission-profile: ':read-only'
+
+  publish:
+    name: Publish review summary
+    needs: review
+    if: ${{ needs.review.result == 'success' && needs.review.outputs.report != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+      issues: write
+    steps:
+      - name: Create or refresh PR summary and status check
+        uses: actions/github-script@v7
+        env:
+          REVIEW_REPORT: ${{ needs.review.outputs.report }}
+        with:
+          script: |
+            const report = JSON.parse(process.env.REVIEW_REPORT);
+            const verdicts = {
+              green: { emoji: '🟢', label: 'No blocker found', conclusion: 'success' },
+              yellow: { emoji: '🟡', label: 'Human attention needed', conclusion: 'neutral' },
+              red: { emoji: '🔴', label: 'Fix before merge', conclusion: 'action_required' },
+            };
+            const recommendations = {
+              approve: 'Approve after your normal human review',
+              consider: 'Consider the questions and risks below',
+              fix: 'Fix the blocking findings before merge',
+            };
+            const verdict = verdicts[report.verdict];
+            if (!verdict || !recommendations[report.recommendation]) {
+              throw new Error('Codex returned an invalid verdict or recommendation.');
+            }
+            const clean = (value) => String(value ?? '').replace(/@/g, '@\u200b').trim();
+            const list = (items, emptyText) =>
+              items.length ? items.map((item) => `- ${clean(item)}`).join('\n') : `- ${emptyText}`;
+            const findingLines = report.findings.length
+              ? report.findings.map((finding) => {
+                  const location = finding.file
+                    ? ` (${clean(finding.file)}${finding.line ? `:${finding.line}` : ''})`
+                    : '';
+                  return `- **${clean(finding.severity).toUpperCase()} — ${clean(finding.title)}**${location}: ${clean(finding.issue)}${finding.fix ? ` Fix: ${clean(finding.fix)}` : ''}`;
+                }).join('\n')
+              : '- No actionable findings identified.';
+            const verification = [
+              ...report.tests_to_run.map((test) => `- Suggested check: ${clean(test)}`),
+              ...report.uncertainties.map((item) => `- Uncertainty: ${clean(item)}`),
+            ];
+            const body = [
+              `<!-- codex-ai-pr-review -->\n## ${verdict.emoji} Codex PR review — ${verdict.label}`,
+              `**Recommendation:** ${recommendations[report.recommendation]}`,
+              `**Summary:** ${clean(report.summary)}`,
+              `**What changed**\n${list(report.changes, 'No change summary returned.')}`,
+              `**Findings**\n${findingLines}`,
+              `**Worth considering**\n${list(report.considerations, 'No additional considerations.')}`,
+              `**Verification notes**\n${verification.length ? verification.join('\n') : '- This AI review did not run tests; use the repository CI checks.'}`,
+              '_AI review is advisory and does not submit a GitHub approval._',
+            ].join('\n\n');
+            const pull = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+            const checkSummary = body.length > 65000 ? `${body.slice(0, 64980)}…` : body;
+            await github.rest.checks.create({
+              owner,
+              repo,
+              name: 'AI PR Review',
+              head_sha: pull.head.sha,
+              status: 'completed',
+              conclusion: verdict.conclusion,
+              output: { title: `Codex review: ${verdict.label}`, summary: checkSummary },
+            });
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner,
+              repo,
+              issue_number: pull.number,
+              per_page: 100,
+            });
+            const previous = comments
+              .filter((comment) => comment.user?.type === 'Bot' && comment.body?.includes('<!-- codex-ai-pr-review -->'))
+              .at(-1);
+            if (previous) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: pull.number, body });
+            }
+
+
