@@ -41,5 +41,7 @@ export async function apiRequest<TResponse>(
     throw new ApiError(response.status)
   }
 
-  return response.json() as Promise<TResponse>
+  const body = (await response.json()) as TResponse
+  request.signal?.throwIfAborted()
+  return body
 }

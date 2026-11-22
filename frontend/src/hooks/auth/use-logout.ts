@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import { broadcastDraftLogout } from '../../lib/chat-drafts'
 import { useAuthStore } from '../../store'
+import { resetChatServerState } from '../../lib/chat-account-boundary'
 
 /**
  * Signs out explicitly and purges chat recovery across the account's tabs.
@@ -13,10 +14,18 @@ import { useAuthStore } from '../../store'
 export function useLogout() {
   return useMutation({
     mutationFn: async () => {
-      const account = useAuthStore.getState().user?.id
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-      broadcastDraftLogout(account)
+      const previous = useAuthStore.getState()
+      // Invalidate/abort before hiding the session or clearing draft storage.
+      resetChatServerState()
+      useAuthStore.setState({ status: 'checking' })
+      try {
+        const { error } = await supabase.auth.signOut()
+        if (error) throw error
+        broadcastDraftLogout(previous.user?.id)
+      } catch (error) {
+        useAuthStore.setState({ status: previous.status, user: previous.user })
+        throw error
+      }
     },
   })
 }

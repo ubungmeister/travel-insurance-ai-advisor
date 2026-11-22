@@ -57,6 +57,7 @@ export function syncDraftAccount(
   account: string,
   storage = draftStorage(),
   shared = sharedStorage(),
+  beforeClear?: () => void,
 ) {
   if (!storage) return false
   try {
@@ -68,6 +69,7 @@ export function syncDraftAccount(
       // Blocking shared storage must not prevent account-change cleanup.
     }
     if (storage.getItem(accountKey) !== account || previous !== generation) {
+      beforeClear?.()
       clearChatDrafts(storage)
       storage.setItem(accountKey, account)
       storage.setItem(logoutGenerationKey, generation)
@@ -95,7 +97,7 @@ export function broadcastDraftLogout(
 }
 
 export function listenForDraftLogout(
-  onCleared: () => void,
+  beforeClear: () => void,
   storage = draftStorage(),
   shared = sharedStorage(),
   events: EventTarget | undefined = typeof window === 'undefined'
@@ -117,12 +119,8 @@ export function listenForDraftLogout(
     } catch {
       return
     }
-    if (
-      account &&
-      changedKey === logoutKey(account) &&
-      syncDraftAccount(account, storage, shared)
-    ) {
-      onCleared()
+    if (account && changedKey === logoutKey(account)) {
+      syncDraftAccount(account, storage, shared, beforeClear)
     }
   }
   events?.addEventListener('storage', onStorage)

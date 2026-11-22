@@ -146,6 +146,31 @@ Replies remain mocked: no LLM, RAG, streaming, or real coverage advice is added.
 
 ## Verification
 
+### Frontend chat organization
+
+- `frontend/src/hooks/conversation/use-chat-session-controller.ts` composes the route,
+  policy/history/detail queries, tab draft, and send hook; it does not duplicate
+  their request or transcript state. `ChatSessionProvider` creates it once in an
+  account/route/logout-epoch scoped boundary; feature sections read that same
+  result with `useChatSessionContext` rather than instantiate controllers.
+- `use-chat-policies.ts`, `use-conversation-history.ts`, and `use-conversation.ts`
+  use React Query with account-scoped keys. `use-send-chat-message.ts` uses a
+  mutation with automatic retry disabled and `networkMode: 'always'`; both Send
+  and Retry check connectivity rather than silently queueing a message.
+- `use-chat-draft.ts` remains responsible for editable and pending data in tab
+  storage. `chat-account-boundary.ts` invalidates late callbacks before aborting
+  active sends, cancelling queries, and clearing query/mutation caches on identity
+  changes. Ordinary navigation does not clear the app-wide client.
+- Confirmation updates the matching conversation cache and resets the mutation
+  observer; history invalidation is a separate best-effort refresh. Mutation
+  `gcTime: 0` limits inactive retention, not secure memory erasure.
+- `ChatSession` composes `ChatPolicyPanel`, `ChatSessionStatus`, and
+  `PendingSendRecovery` alongside `ChatHistory`, `ChatMessages`, and
+  `ChatComposer`. Those adapters keep the generic history/transcript/form views
+  reusable with props. Missing chat context throws an explicit provider error.
+
+### Commands
+
 - Backend (from `backend/`, with dependencies/configuration available): `python -m pytest`.
 - Frontend (from `frontend/`): `npm test`, `npm run lint`, `npm run build`.
 - Frontend tests use Node's test runner, Vite SSR, React test renderer, and

@@ -4,6 +4,12 @@ import { createElement, useEffect } from 'react'
 import TestRenderer, { act } from 'react-test-renderer'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createServer } from 'vite'
+import { MemoryRouter } from 'react-router-dom'
+import { QueryClient, QueryClientProvider, notifyManager } from '@tanstack/react-query'
+
+// Flush query notifications inside React act rather than requiring arbitrary
+// delays for React Query's default setTimeout-based notification scheduler.
+notifyManager.setScheduler(queueMicrotask)
 
 const server = await createServer({
   configFile: false,
@@ -176,8 +182,8 @@ function storage() {
 }
 
 async function mount(t, route) {
-  const { useChatSession } = await server.ssrLoadModule(
-    '/src/hooks/conversation/use-chat-session.ts',
+  const { useChatSessionController } = await server.ssrLoadModule(
+    '/src/hooks/conversation/use-chat-session-controller.ts',
   )
   const tab = storage()
   t.mock.method(globalThis, 'fetch', async () => {
@@ -186,9 +192,11 @@ async function mount(t, route) {
   let state
   let renderer
   const paths = []
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  const render = (target) => createElement(QueryClientProvider, { client }, createElement(Probe, { target }))
   const navigate = (path) => paths.push(path)
   function Probe({ target }) {
-    const current = useChatSession('alice', target, navigate, tab)
+    const current = useChatSessionController('alice', target, navigate, tab)
     useEffect(() => {
       state = current
     })
@@ -197,19 +205,235 @@ async function mount(t, route) {
   async function remount(target = route) {
     await act(async () => {
       renderer?.unmount()
-      renderer = TestRenderer.create(createElement(Probe, { target }))
+      renderer = TestRenderer.create(render(target))
     })
   }
-  t.after(() => act(() => renderer?.unmount()))
+  t.after(() => {
+    act(() => renderer?.unmount())
+    client.clear()
+  })
   return {
     tab,
+    client,
     paths,
     remount,
+    unmount: () => {
+      renderer?.unmount()
+      renderer = undefined
+    },
     get state() {
       return state
     },
   }
 }
+
+test('server reads populate account-scoped caches and confirmed sends reset mutation variables', async (t) => {
+  const page = await mount(t, '7')
+  let resolveSend
+  globalThis.fetch.mock.mockImplementation(async (url, options) => {
+    if (options.method === 'POST') return new Promise((resolve) => { resolveSend = resolve })
+    return Response.json(new URL(url).pathname.endsWith('/7') ? detail : [detail])
+  })
+  await page.remount()
+  assert.deepEqual(page.client.getQueryData(['chat', 'alice', 'conversation', 7]), detail)
+  assert.deepEqual(page.client.getQueryData(['chat', 'alice', 'history']), [detail])
+  assert.equal(page.client.getQueryData(['chat', 'bob', 'conversation', 7]), undefined)
+  act(() => page.state.editDraft('Do not retain in mutation observer'))
+  let send
+  await act(async () => { send = page.state.send() })
+  const mutation = page.client.getMutationCache().getAll()[0]
+  let detached = false
+  const unsubscribe = page.client.getMutationCache().subscribe((event) => {
+    if (event.type === 'observerRemoved' && event.mutation === mutation) detached = true
+  })
+  try {
+    assert.ok(mutation)
+    assert.equal(mutation.options.networkMode, 'always')
+    assert.equal(mutation.options.retry, false)
+    assert.equal(mutation.options.gcTime, 0)
+    assert.equal(mutation.state.variables.message, 'Do not retain in mutation observer')
+  } finally {
+    // Settle the mocked transport even on assertion failure: real fetch rejects
+    // on abort, whereas this deliberately controlled promise otherwise cannot.
+    await act(async () => {
+      resolveSend?.(Response.json({ conversation_id: 7, messages: [] }))
+      await send
+    })
+    unsubscribe()
+  }
+  assert.equal(detached, true)
+  assert.equal(page.state.recovery, undefined)
+  assert.equal(page.state.sending, false)
+})
+
+test('discarding a rejected request clears its send warning as well as recovery', async (t) => {
+  const page = await mount(t, '7')
+  globalThis.fetch.mock.mockImplementation(async (url, options) => {
+    if (options.method === 'POST') return Response.json({}, { status: 422 })
+    return Response.json(new URL(url).pathname.endsWith('/7') ? detail : [detail])
+  })
+  await page.remount()
+  act(() => page.state.editDraft('Rejected'))
+  await act(async () => { await page.state.send() })
+  const mutation = page.client.getMutationCache().getAll()[0]
+  assert.equal(mutation.state.variables.message, 'Rejected')
+  let detached = false
+  const unsubscribe = page.client.getMutationCache().subscribe((event) => {
+    if (event.type === 'observerRemoved' && event.mutation === mutation) detached = true
+  })
+  act(() => page.state.resolveRejected('discard'))
+  unsubscribe()
+  assert.equal(detached, true)
+  assert.equal(page.state.recovery, undefined)
+  assert.equal(page.state.sendError, '')
+})
+
+test('confirmed retry reloads exact detail when its initial read failed', async (t) => {
+  const page = await mount(t, '7')
+  const { updateDraft } = await server.ssrLoadModule('/src/lib/chat-drafts.ts')
+  updateDraft('alice', '7', () => ({ text: '', pending: {
+    request_id: requestId, conversation_id: 7, message: 'Saved earlier',
+  } }), page.tab)
+  const turn = [{ id: 8, role: 'USER', content: 'Saved earlier' }, { id: 9, role: 'ASSISTANT', content: '(mocked) Saved' }]
+  let reads = 0
+  globalThis.fetch.mock.mockImplementation(async (url, options) => {
+    if (options.method === 'POST') return Response.json({ conversation_id: 7, messages: turn })
+    if (new URL(url).pathname.endsWith('/7')) {
+      reads++
+      return reads === 1 ? Response.json({}, { status: 503 }) : Response.json({ ...detail, messages: turn })
+    }
+    return Response.json([detail])
+  })
+  await page.remount()
+  assert.equal(page.state.loadError, true)
+  assert.equal(page.state.conversation, null)
+  await act(async () => { await page.state.retry() })
+  assert.equal(reads, 2)
+  assert.deepEqual(page.state.conversation.messages, turn)
+  assert.equal(page.state.loadError, false)
+  assert.equal(page.state.recovery, undefined)
+})
+
+test('extracted recovery view distinguishes retry from rejection and protects newer typing', async () => {
+  const { PendingSendRecovery } = await server.ssrLoadModule('/src/components/chat/PendingSendRecovery.tsx')
+  const { ChatSessionContext } = await server.ssrLoadModule('/src/hooks/conversation/chat-session-context.ts')
+  const request = { request_id: requestId, policy_id: 3, message: 'Original' }
+  const actions = []
+  const state = { recovery: request, rejected: true, draft: 'Newer text', sending: false, loading: false, unavailable: false,
+    retry: async () => actions.push('retry'), resolveRejected: (action) => actions.push(action) }
+  const view = (value) => createElement(ChatSessionContext.Provider, { value }, createElement(PendingSendRecovery))
+  let renderer
+  act(() => { renderer = TestRenderer.create(view(state)) })
+  try {
+    const buttons = renderer.root.findAllByType('button')
+    assert.deepEqual(buttons.map((button) => button.children.join('')), ['Restore rejected text', 'Discard rejected send'])
+    assert.equal(buttons[0].props.disabled, true)
+    act(() => buttons[1].props.onClick())
+    assert.deepEqual(actions, ['discard'])
+    act(() => renderer.update(view({ ...state, rejected: false })))
+    assert.equal(renderer.root.findByType('button').children.join(''), 'Retry pending message')
+  } finally {
+    act(() => renderer.unmount())
+  }
+})
+
+test('cached detail is hidden if exact conversation refetch returns 404', async (t) => {
+  const page = await mount(t, '7')
+  page.client.setQueryData(['chat', 'alice', 'conversation', 7], detail)
+  globalThis.fetch.mock.mockImplementation(async (url) => new URL(url).pathname.endsWith('/7')
+    ? Response.json({}, { status: 404 }) : Response.json([detail]))
+  await page.remount()
+  assert.equal(page.state.unavailable, true)
+  assert.equal(page.state.conversation, null)
+  assert.deepEqual(page.paths, [])
+})
+
+test('cached new-chat policies are not associated with an unavailable saved chat', async (t) => {
+  const page = await mount(t, '7')
+  page.client.setQueryData(['chat', 'alice', 'policies'], [policy])
+  globalThis.fetch.mock.mockImplementation(async (url) => new URL(url).pathname.endsWith('/7')
+    ? Response.json({}, { status: 404 }) : Response.json([detail]))
+  await page.remount()
+  assert.equal(page.state.unavailable, true)
+  assert.equal(page.state.policyId, undefined)
+  assert.deepEqual(page.state.policies, [])
+})
+
+test('failed history refetch cannot unconfirm a successful send', async (t) => {
+  const page = await mount(t, '7')
+  let sent = false
+  const turn = [{ id: 3, role: 'USER', content: 'Saved' }, { id: 4, role: 'ASSISTANT', content: '(mocked) Saved' }]
+  globalThis.fetch.mock.mockImplementation(async (url, options) => {
+    if (options.method === 'POST') {
+      sent = true
+      return Response.json({ conversation_id: 7, messages: turn })
+    }
+    if (new URL(url).pathname.endsWith('/7')) return Response.json(detail)
+    return sent ? Response.json({}, { status: 503 }) : Response.json([detail])
+  })
+  await page.remount()
+  act(() => page.state.editDraft('Saved'))
+  await act(async () => { await page.state.send() })
+  assert.deepEqual(page.state.conversation.messages, turn)
+  assert.equal(page.state.recovery, undefined)
+  assert.equal(page.state.sendError, '')
+})
+
+test('offline retry never queues or replaces a restored request', async (t) => {
+  const page = await mount(t, '7')
+  const { updateDraft } = await server.ssrLoadModule('/src/lib/chat-drafts.ts')
+  const pending = { request_id: requestId, conversation_id: 7, message: 'Original' }
+  updateDraft('alice', '7', () => ({ text: 'New typing', pending }), page.tab)
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+  Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { onLine: false } })
+  t.after(() => {
+    if (descriptor) Object.defineProperty(globalThis, 'navigator', descriptor)
+    else delete globalThis.navigator
+  })
+  let posts = 0
+  globalThis.fetch.mock.mockImplementation(async (url, options) => {
+    if (options.method === 'POST') posts++
+    return Response.json(new URL(url).pathname.endsWith('/7') ? detail : [detail])
+  })
+  await page.remount()
+  await act(async () => { await page.state.retry() })
+  assert.equal(posts, 0)
+  assert.equal(page.client.getMutationCache().getAll().length, 0)
+  assert.deepEqual(page.state.recovery, pending)
+})
+
+test('account cleanup aborts sends and blocks late cache and recovery callbacks', async (t) => {
+  const page = await mount(t, '7')
+  let release
+  let signal
+  globalThis.fetch.mock.mockImplementation(async (url, options) => {
+    if (options.method === 'POST') {
+      signal = options.signal
+      return new Promise((resolve) => { release = resolve })
+    }
+    return Response.json(new URL(url).pathname.endsWith('/7') ? detail : [detail])
+  })
+  await page.remount()
+  act(() => page.state.editDraft('Still awaiting confirmation'))
+  let request
+  await act(async () => { request = page.state.send() })
+  const { resetChatServerState } = await server.ssrLoadModule('/src/lib/chat-account-boundary.ts')
+  act(() => {
+    resetChatServerState(page.client)
+    page.unmount()
+  })
+  assert.equal(signal.aborted, true)
+  await act(async () => {
+    release(Response.json({ conversation_id: 7, messages: [] }))
+    await request
+  })
+  assert.equal(page.client.getQueryCache().getAll().length, 0)
+  assert.equal(page.client.getMutationCache().getAll().length, 0)
+  assert.equal(page.paths.length, 0)
+  // Cache cleanup alone must not delete tab recovery needed for reauthentication.
+  const { readDraft } = await server.ssrLoadModule('/src/lib/chat-drafts.ts')
+  assert.equal(readDraft('alice', '7', page.tab).pending.message, 'Still awaiting confirmation')
+})
 
 test('exact URL loads its transcript, never falls back when unavailable', async (t) => {
   const page = await mount(t, '7')
@@ -433,6 +657,163 @@ test('messages render oldest first and escape user text', async () => {
   assert.ok(
     html.indexOf('someone typed this') < html.indexOf('(mocked) response'),
   )
+})
+
+test('rendering chat messages does not log the session or transcript', async (t) => {
+  const { ChatSessionContext } = await server.ssrLoadModule(
+    '/src/hooks/conversation/chat-session-context.ts',
+  )
+  const { ChatMessages } = await server.ssrLoadModule(
+    '/src/components/chat/ChatMessages.tsx',
+  )
+  const logged = []
+  t.mock.method(console, 'log', (...args) => logged.push(args))
+  const session = {
+    draft: 'private draft',
+    conversation: {
+      ...detail,
+      messages: [{ id: 2, role: 'USER', content: 'private message' }],
+    },
+  }
+  let renderer
+  act(() => {
+    renderer = TestRenderer.create(
+      createElement(
+        ChatSessionContext.Provider,
+        { value: session },
+        createElement(ChatMessages),
+      ),
+    )
+  })
+  assert.match(JSON.stringify(renderer.toJSON()), /private message/)
+  assert.deepEqual(logged, [])
+  act(() => renderer.unmount())
+})
+
+async function contextFixture(t) {
+  const { ChatSessionProvider } = await server.ssrLoadModule('/src/components/chat/ChatSessionProvider.tsx')
+  const { useChatSessionContext } = await server.ssrLoadModule('/src/hooks/conversation/use-chat-session-context.ts')
+  const tab = storage()
+  const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
+  Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: tab })
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  t.mock.method(globalThis, 'fetch', async (url, options) => {
+    if (options.method === 'POST') return Response.json({}, { status: 422 })
+    const path = new URL(url).pathname
+    if (path.endsWith('/policies')) return Response.json([policy, { policy_id: 4, policy_number: 'P-4' }])
+    return Response.json(path.endsWith('/7') ? detail : [])
+  })
+  const states = {}
+  const paths = []
+  function Consumer({ name }) {
+    const value = useChatSessionContext()
+    useEffect(() => { states[name] = value })
+    return null
+  }
+  let renderer
+  function tree(props = {}, children = ['one', 'two', 'three'].map((name) => createElement(Consumer, { name, key: name }))) {
+    return createElement(QueryClientProvider, { client },
+      createElement(MemoryRouter, null,
+        createElement(ChatSessionProvider, { accountId: 'alice', target: 'new', navigate: (path) => paths.push(path), ...props }, children)))
+  }
+  async function render(props, children) {
+    await act(async () => {
+      if (renderer) renderer.update(tree(props, children))
+      else renderer = TestRenderer.create(tree(props, children))
+    })
+  }
+  t.after(() => {
+    act(() => renderer?.unmount())
+    client.clear()
+    if (descriptor) Object.defineProperty(globalThis, 'sessionStorage', descriptor)
+    else delete globalThis.sessionStorage
+  })
+  return { states, paths, tab, client, render, get root() { return renderer.root } }
+}
+
+test('chat consumers share one session and its draft instead of owning separate hooks', async (t) => {
+  const fixture = await contextFixture(t)
+  await fixture.render()
+  assert.equal(fixture.states.one, fixture.states.two)
+  assert.equal(fixture.states.one, fixture.states.three)
+  act(() => fixture.states.one.selectPolicy(3))
+  act(() => fixture.states.two.editDraft('Shared draft'))
+  assert.equal(fixture.states.three.draft, 'Shared draft')
+  assert.equal(fixture.states.three.policyId, 3)
+  assert.equal(fixture.client.getMutationCache().getAll().length, 0)
+})
+
+test('provider scopes the controller by route, logout epoch and account', async (t) => {
+  const fixture = await contextFixture(t)
+  await fixture.render()
+  act(() => fixture.states.one.editDraft('New chat draft'))
+  await fixture.render({ target: '7' })
+  assert.equal(fixture.states.one.draft, '')
+  assert.equal(fixture.states.one.conversation.conversation_id, 7)
+  await fixture.render({ target: 'new' })
+  assert.equal(fixture.states.one.draft, 'New chat draft')
+  const { clearChatDrafts } = await server.ssrLoadModule('/src/lib/chat-drafts.ts')
+  clearChatDrafts(fixture.tab)
+  await fixture.render({ target: 'new', draftEpoch: 1 })
+  assert.equal(fixture.states.one.draft, '')
+  act(() => fixture.states.one.editDraft('Alice memory'))
+  await fixture.render({ accountId: 'bob', target: 'new' })
+  assert.equal(fixture.states.one.draft, '')
+  assert.equal(fixture.states.one.recovery, undefined)
+})
+
+test('provider route change aborts a send and leaves its original recovery intact', async (t) => {
+  const fixture = await contextFixture(t)
+  let response
+  let signal
+  globalThis.fetch.mock.mockImplementation(async (url, options) => {
+    if (options.method === 'POST') {
+      signal = options.signal
+      return new Promise((resolve) => { response = resolve })
+    }
+    const path = new URL(url).pathname
+    return Response.json(path.endsWith('/policies') ? [policy] : path.endsWith('/7') ? detail : [])
+  })
+  await fixture.render()
+  act(() => fixture.states.one.editDraft('Uncertain first turn'))
+  let send
+  await act(async () => { send = fixture.states.one.send() })
+  try {
+    await fixture.render({ target: '7' })
+    assert.equal(signal.aborted, true)
+  } finally {
+    // Always settle the fake transport; real fetch rejects on this abort.
+    await act(async () => {
+      response?.(Response.json({ conversation_id: 7, messages: [] }))
+      await send
+    })
+  }
+  const { readDraft } = await server.ssrLoadModule('/src/lib/chat-drafts.ts')
+  assert.equal(readDraft('alice', 'new', fixture.tab).pending.message, 'Uncertain first turn')
+  assert.deepEqual(fixture.paths, [])
+  assert.equal(fixture.states.one.conversation.conversation_id, 7)
+  assert.deepEqual(fixture.client.getQueryData(['chat', 'alice', 'conversation', 7]).messages, [])
+})
+
+test('context-driven chat sections update and resolve recovery without state props', async (t) => {
+  const fixture = await contextFixture(t)
+  const { ChatSession } = await server.ssrLoadModule('/src/components/chat/ChatSession.tsx')
+  await fixture.render({}, createElement(ChatSession))
+  const choose = fixture.root.findAllByType('button').find((button) => button.children.join('') === 'Choose P-3')
+  act(() => choose.props.onClick())
+  act(() => fixture.root.findByType('input').props.onChange({ target: { value: 'Rejected text' } }))
+  await act(async () => { fixture.root.findByType('form').props.onSubmit({ preventDefault() {} }) })
+  const restore = fixture.root.findAllByType('button').find((button) => button.children.join('') === 'Restore rejected text')
+  assert.ok(restore)
+  act(() => restore.props.onClick())
+  assert.equal(fixture.root.findByType('input').props.value, 'Rejected text')
+  assert.equal(fixture.root.findAllByType('button').some((button) => button.children.join('') === 'Restore rejected text'), false)
+})
+
+test('session context fails explicitly outside its provider', async () => {
+  const { useChatSessionContext } = await server.ssrLoadModule('/src/hooks/conversation/use-chat-session-context.ts')
+  function Orphan() { useChatSessionContext(); return null }
+  assert.throws(() => renderToStaticMarkup(createElement(Orphan)), /ChatSessionProvider/)
 })
 
 test('expired or changed auth cannot transmit a pending send with another account token', async (t) => {
