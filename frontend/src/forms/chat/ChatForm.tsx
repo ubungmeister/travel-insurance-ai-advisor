@@ -1,38 +1,38 @@
-import { useState } from 'react'
+interface ChatFormProps {
+  value: string
+  onChange: (value: string) => void
+  disabled?: boolean
+  readOnly?: boolean
+  isPending?: boolean
+  onSend: () => Promise<void>
+}
 
-import { useSendMessage } from '../../hooks'
-
-export function ChatForm({ disabled = false }: { disabled?: boolean }) {
-  const [message, setMessage] = useState('')
-  const { mutate, data, isPending, isError } = useSendMessage()
-
+export function ChatForm({
+  value,
+  onChange,
+  disabled = false,
+  readOnly = false,
+  isPending = false,
+  onSend,
+}: ChatFormProps) {
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault()
-
-    if (disabled || isPending || !message.trim()) return
-
-    mutate(message)
+    if (!disabled && !isPending && value.trim()) void onSend()
   }
 
-  const reply = isError ? 'Unable to reach the advisor.' : data?.reply
-
   return (
-    <>
-      <form onSubmit={handleSubmit}>
-        <input
-          aria-label="Message"
-          disabled={disabled || isPending}
-          value={message}
-          onChange={(event) => setMessage(event.target.value)}
-          placeholder="Ask about your travel insurance"
-        />
-
-        <button type="submit" disabled={disabled || isPending}>
-          {isPending ? 'Sending...' : 'Send'}
-        </button>
-      </form>
-
-      {reply && <p>{reply}</p>}
-    </>
+    <form onSubmit={handleSubmit}>
+      <input
+        aria-label="Message"
+        maxLength={2000}
+        readOnly={readOnly}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder="Ask about your travel insurance"
+      />
+      <button type="submit" disabled={disabled || isPending || !value.trim()}>
+        {isPending ? 'Sending...' : 'Send'}
+      </button>
+    </form>
   )
 }

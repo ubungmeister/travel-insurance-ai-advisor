@@ -1,8 +1,17 @@
-import { ChatSession, HealthStatus, LogoutButton } from '../../components'
+import {
+  ChatSession,
+  ChatSessionProvider,
+  HealthStatus,
+  LogoutButton,
+} from '../../components'
 import { useAuthStore } from '../../store'
+import { useNavigate, useParams } from 'react-router-dom'
 
 export function ChatPage() {
   const userId = useAuthStore((state) => state.user?.id)
+  const draftEpoch = useAuthStore((state) => state.draftEpoch)
+  const { conversationId } = useParams()
+  const navigate = useNavigate()
 
   return (
     <>
@@ -10,7 +19,16 @@ export function ChatPage() {
 
       <LogoutButton />
       <HealthStatus />
-      {userId && <ChatSession key={userId} />}
+      {userId && (
+        <ChatSessionProvider
+          accountId={userId}
+          target={conversationId}
+          draftEpoch={draftEpoch}
+          navigate={(path, replace) => navigate(path, { replace })}
+        >
+          <ChatSession />
+        </ChatSessionProvider>
+      )}
     </>
   )
 }

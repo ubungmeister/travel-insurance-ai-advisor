@@ -1,23 +1,20 @@
-import { ChatForm } from '../../forms'
-import { useCreateConversation } from '../../hooks'
-import { PolicySelection } from './PolicySelection'
+import { ChatComposer } from './ChatComposer'
+import { ChatHistory } from './ChatHistory'
+import { ChatMessages } from './ChatMessages'
+import { ChatPolicyPanel } from './ChatPolicyPanel'
+import { ChatSessionStatus } from './ChatSessionStatus'
+import { PendingSendRecovery } from './PendingSendRecovery'
 
 export function ChatSession() {
-  const { result, selectPolicy, isPending, isError } = useCreateConversation()
-
   return (
     <>
-      <PolicySelection
-        result={result}
-        isPending={isPending}
-        isError={isError}
-        onStart={selectPolicy}
-      />
-      <p>
-        Mock chat only — replies are not coverage advice. Messages are not
-        saved.
-      </p>
-      <ChatForm disabled={result?.status !== 'ready'} />
+      <ChatHistory />
+      <p>Mock chat only — replies are not coverage advice. Messages are saved.</p>
+      <ChatSessionStatus />
+      <ChatPolicyPanel />
+      <ChatMessages />
+      <PendingSendRecovery />
+      <ChatComposer />
     </>
   )
 }

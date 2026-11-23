@@ -1,4 +1,5 @@
 import time
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import httpx
@@ -232,6 +233,58 @@ def test_me_returns_current_user(monkeypatch, keypair):
 def test_me_requires_auth():
     response = client.get(ME_URL)
     assert response.status_code == 401
+
+
+@pytest.mark.parametrize(
+    ("claims", "expected"),
+    [
+        ({"iat": 1}, 200),
+        ({"iat": 2}, 200),
+        ({"iat": 3}, 401),
+        ({"iat": "invalid"}, 401),
+        ({"exp": -1}, 401),
+        ({"nbf": 1}, 401),
+    ],
+    ids=[
+        "initial-request", "iat-boundary", "too-early", "invalid-iat", "expired", "not-before",
+    ],
+)
+def test_me_applies_clock_tolerance_only_to_issued_at(
+    monkeypatch, keypair, claims, expected
+):
+    private_key, public_pem = keypair
+    now = datetime(2026, 11, 20, tzinfo=timezone.utc)
+    timestamp = int(now.timestamp())
+
+    class FixedClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return now.astimezone(tz) if tz else now.replace(tzinfo=None)
+
+    monkeypatch.setattr(jwt.api_jwt, "datetime", FixedClock)
+    monkeypatch.setattr(authentication, "datetime", FixedClock, raising=False)
+    monkeypatch.setattr(
+        authentication.jwks_client,
+        "get_signing_key_from_jwt",
+        lambda token: type("SigningKey", (), {"key": public_pem})(),
+    )
+    payload = {
+        "sub": str(uuid4()),
+        "email": "demo@example.com",
+        "aud": authentication.settings.supabase_jwt_audience,
+        "iss": authentication.SUPABASE_ISSUER,
+        "iat": timestamp - 10,
+        "exp": timestamp + 60,
+        **{
+            claim: timestamp + offset if isinstance(offset, int) else offset
+            for claim, offset in claims.items()
+        },
+    }
+    token = jwt.encode(payload, private_key, algorithm="ES256")
+    response = client.get(ME_URL, headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == expected
+    if expected == 401:
+        assert response.json() == {"detail": "Invalid or expired token"}
 
 
 def test_me_rejects_invalid_signature(monkeypatch, keypair):

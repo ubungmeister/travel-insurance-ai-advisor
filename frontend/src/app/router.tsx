@@ -6,7 +6,10 @@ import { ChatPage, LoginPage, NotFoundPage } from '../pages'
 export const router = createBrowserRouter([
   {
     element: <RequireAuth />,
-    children: [{ path: '/', element: <ChatPage /> }],
+    children: [
+      { path: '/', element: <ChatPage /> },
+      { path: '/chat/:conversationId', element: <ChatPage /> },
+    ],
   },
   { path: '/login', element: <LoginPage /> },
   { path: '*', element: <NotFoundPage /> },

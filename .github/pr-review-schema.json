@@ -1,0 +1,62 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "verdict": {
+      "type": "string",
+      "enum": ["green", "yellow", "red"]
+    },
+    "recommendation": {
+      "type": "string",
+      "enum": ["approve", "consider", "fix"]
+    },
+    "summary": {
+      "type": "string"
+    },
+    "changes": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"]
+          },
+          "title": { "type": "string" },
+          "file": { "type": ["string", "null"] },
+          "line": { "type": ["integer", "null"] },
+          "issue": { "type": "string" },
+          "fix": { "type": ["string", "null"] }
+        },
+        "required": ["severity", "title", "file", "line", "issue", "fix"]
+      }
+    },
+    "considerations": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "tests_to_run": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "uncertainties": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": [
+    "verdict",
+    "recommendation",
+    "summary",
+    "changes",
+    "findings",
+    "considerations",
+    "tests_to_run",
+    "uncertainties"
+  ]
+}
