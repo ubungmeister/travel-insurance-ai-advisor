@@ -1,4 +1,4 @@
-import { useChatSessionContext } from '../../hooks/conversation/use-chat-session-context'
+import { useChatSessionContext } from '../../hooks/chat/use-chat-session-context'
 import { ChatTranscript } from './ChatTranscript'
 
 export function ChatMessages() {

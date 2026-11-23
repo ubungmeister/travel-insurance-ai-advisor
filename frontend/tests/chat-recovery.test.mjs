@@ -309,7 +309,7 @@ test('chat history adapter navigates to the exact saved and new chat routes', as
     '/src/components/chat/ChatHistory.tsx',
   )
   const { ChatSessionContext } = await server.ssrLoadModule(
-    '/src/hooks/conversation/chat-session-context.ts',
+    '/src/hooks/chat/chat-session-context.ts',
   )
   const paths = []
   const { root } = renderView(
@@ -341,7 +341,7 @@ async function policyPanelView() {
     '/src/components/chat/ChatPolicyPanel.tsx',
   )
   const { ChatSessionContext } = await server.ssrLoadModule(
-    '/src/hooks/conversation/chat-session-context.ts',
+    '/src/hooks/chat/chat-session-context.ts',
   )
   return (state) =>
     createElement(
@@ -417,7 +417,7 @@ test('chat policy panel forwards a choice, reflects selection and respects send 
 
 async function mount(t, route) {
   const { useChatSessionController } = await server.ssrLoadModule(
-    '/src/hooks/conversation/use-chat-session-controller.ts',
+    '/src/hooks/chat/use-chat-session-controller.ts',
   )
   const tab = storage()
   t.mock.method(globalThis, 'fetch', async () => {
@@ -550,7 +550,7 @@ test('confirmed retry reloads exact detail when its initial read failed', async 
 
 test('extracted recovery view distinguishes retry from rejection and protects newer typing', async () => {
   const { PendingSendRecovery } = await server.ssrLoadModule('/src/components/chat/PendingSendRecovery.tsx')
-  const { ChatSessionContext } = await server.ssrLoadModule('/src/hooks/conversation/chat-session-context.ts')
+  const { ChatSessionContext } = await server.ssrLoadModule('/src/hooks/chat/chat-session-context.ts')
   const request = { request_id: requestId, policy_id: 3, message: 'Original' }
   const actions = []
   const state = { recovery: request, rejected: true, draft: 'Newer text', sending: false, loading: false, unavailable: false,
@@ -895,7 +895,7 @@ test('messages render oldest first and escape user text', async () => {
 
 test('rendering chat messages does not log the session or transcript', async (t) => {
   const { ChatSessionContext } = await server.ssrLoadModule(
-    '/src/hooks/conversation/chat-session-context.ts',
+    '/src/hooks/chat/chat-session-context.ts',
   )
   const { ChatMessages } = await server.ssrLoadModule(
     '/src/components/chat/ChatMessages.tsx',
@@ -926,7 +926,7 @@ test('rendering chat messages does not log the session or transcript', async (t)
 
 async function contextFixture(t) {
   const { ChatSessionProvider } = await server.ssrLoadModule('/src/components/chat/ChatSessionProvider.tsx')
-  const { useChatSessionContext } = await server.ssrLoadModule('/src/hooks/conversation/use-chat-session-context.ts')
+  const { useChatSessionContext } = await server.ssrLoadModule('/src/hooks/chat/use-chat-session-context.ts')
   const tab = storage()
   const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'sessionStorage')
   Object.defineProperty(globalThis, 'sessionStorage', { configurable: true, value: tab })
@@ -1081,7 +1081,7 @@ test('chat layout keeps history in the sidebar and the transcript above the poli
 })
 
 test('transcript opens at the latest message and follows only when the reader is at the bottom', async (t) => {
-  const { useChatTranscriptAutoScroll } = await server.ssrLoadModule('/src/hooks/conversation/use-chat-transcript-auto-scroll.ts')
+  const { useChatTranscriptAutoScroll } = await server.ssrLoadModule('/src/hooks/chat/use-chat-transcript-auto-scroll.ts')
   let scrollTop = 0
   const element = {
     scrollHeight: 1000,
@@ -1179,7 +1179,7 @@ test('context-driven chat sections update and resolve recovery without state pro
 })
 
 test('session context fails explicitly outside its provider', async () => {
-  const { useChatSessionContext } = await server.ssrLoadModule('/src/hooks/conversation/use-chat-session-context.ts')
+  const { useChatSessionContext } = await server.ssrLoadModule('/src/hooks/chat/use-chat-session-context.ts')
   function Orphan() { useChatSessionContext(); return null }
   assert.throws(() => renderToStaticMarkup(createElement(Orphan)), /ChatSessionProvider/)
 })

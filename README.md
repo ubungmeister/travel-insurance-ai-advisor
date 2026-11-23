@@ -148,7 +148,7 @@ Replies remain mocked: no LLM, RAG, streaming, or real coverage advice is added.
 
 ### Frontend chat organization
 
-- `frontend/src/hooks/conversation/use-chat-session-controller.ts` composes the route,
+- `frontend/src/hooks/chat/use-chat-session-controller.ts` composes the route,
   policy/history/detail queries, tab draft, and send hook; it does not duplicate
   their request or transcript state. `ChatSessionProvider` creates it once in an
   account/route/logout-epoch scoped boundary; feature sections read that same

@@ -1,5 +1,5 @@
 import { ChatForm } from '../../forms/chat/ChatForm'
-import { useChatSessionContext } from '../../hooks/conversation/use-chat-session-context'
+import { useChatSessionContext } from '../../hooks/chat/use-chat-session-context'
 
 /**
  * Connects the generic form to the shared draft. A rejected send keeps the
