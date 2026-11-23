@@ -61,7 +61,8 @@ export function useChatSessionController(
     accountId, route, draft, policyId, navigate, reload,
     canSend: !loading && !loadError && !unavailable &&
       (route.kind === 'new' ? policyId !== undefined : !!conversation?.selected_policy),
-    canRetry: !loading && !unavailable,
+    // A detail 403/404 must not strand an idempotent retry for this same route.
+    canRetry: !loading,
   })
 
   function resolveRejected(action: 'restore' | 'discard') {

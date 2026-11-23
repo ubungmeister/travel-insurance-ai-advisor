@@ -11,8 +11,9 @@ import type { Draft } from '../../lib/chat-drafts'
 
 /**
  * Owns the tab's editable text and immutable pending request. Synchronous refs
- * protect same-tick actions; storage is authoritative for matching receipt
- * cleanup and rejected-send recovery. It never sends or caches a transcript.
+ * protect same-tick actions; confirmation carries the latest in-memory text
+ * into receipt cleanup so a quota-failed edit is not replaced by stale storage.
+ * It never sends or caches a transcript.
  */
 export function useChatDraft(
   accountId: string,
@@ -68,10 +69,20 @@ export function useChatDraft(
   }
 
   function confirm(requestId: string, conversationId: number) {
-    if (!confirmSend(accountId, slot, requestId, conversationId, storage))
+    if (
+      !confirmSend(
+        accountId,
+        slot,
+        requestId,
+        conversationId,
+        storage,
+        current.current,
+      )
+    )
       return false
     current.current = readDraft(accountId, slot, storage)
     setValue(current.current)
+    setError('')
     return true
   }
 

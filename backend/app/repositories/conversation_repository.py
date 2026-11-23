@@ -47,6 +47,7 @@ def get_owned_conversation(
 def list_owned_conversations(db: Session, auth_user_id: UUID):
     """Order owned chats by last message time, including chats with no messages.
 
+    Aggregate activity only for this account before joining the owned chats.
     Empty chats use creation time. The descending ID tie-breaker keeps the
     home route's most-recent selection deterministic at equal timestamps.
     """
@@ -54,6 +55,9 @@ def list_owned_conversations(db: Session, auth_user_id: UUID):
         select(
             Message.conversation_id, func.max(Message.created_at).label("last_message_at")
         )
+        .join(Conversation, Message.conversation_id == Conversation.id)
+        .join(User, Conversation.user_id == User.id)
+        .where(User.auth_user_id == auth_user_id)
         .group_by(Message.conversation_id)
         .subquery()
     )

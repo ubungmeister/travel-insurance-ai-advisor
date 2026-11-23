@@ -1,7 +1,11 @@
 import { ChatForm } from '../../forms/chat/ChatForm'
 import { useChatSessionContext } from '../../hooks/conversation/use-chat-session-context'
 
-/** Connects the generic controlled form to the one shared session draft. */
+/**
+ * Connects the generic form to the shared draft. A rejected send keeps the
+ * composer editable so newer text can be cleared for restoration; unavailable
+ * chats still disable sending.
+ */
 export function ChatComposer() {
   const chat = useChatSessionContext()
   const policy =
@@ -13,7 +17,7 @@ export function ChatComposer() {
   return (
     <ChatForm
       value={chat.draft}
-      readOnly={chat.unavailable || chat.target === undefined}
+      readOnly={chat.target === undefined || (chat.unavailable && !chat.rejected)}
       onChange={chat.editDraft}
       onSend={chat.send}
       disabled={!canSend || chat.sending || !!chat.recovery}

@@ -9,11 +9,11 @@ export function ChatSession() {
   return (
     <>
       <ChatHistory />
-      <ChatSessionStatus /> //TODO: remove later PR
+      <p>Mock chat only — replies are not coverage advice. Messages are saved.</p>
+      <ChatSessionStatus />
       <ChatPolicyPanel />
       <ChatMessages />
-      <PendingSendRecovery /> //TODO: remove later PR, React query will handle
-      retries
+      <PendingSendRecovery />
       <ChatComposer />
     </>
   )

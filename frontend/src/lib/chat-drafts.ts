@@ -160,9 +160,10 @@ export function updateDraft(
 
 /**
  * Clears a confirmed request only if it still matches the pending request in
- * the tab. Read the stored record again so newer typing is not lost. First-send
- * confirmation can move that text to the saved conversation's draft, but must
- * keep both drafts if text already exists at the destination.
+ * the tab. Use the current in-memory text when supplied so a quota-failed edit
+ * is committed with recovery cleanup instead of being replaced by stale
+ * storage. First-send confirmation can move that text to the saved draft, but
+ * must keep both drafts if text already exists at the destination.
  */
 export function confirmSend(
   account: string,
@@ -170,24 +171,26 @@ export function confirmSend(
   requestId: string,
   conversationId: number,
   storage = draftStorage(),
+  latestDraft?: Pick<Draft, 'text' | 'policyId'>,
 ) {
   if (!storage) return false
   const drafts = readAll(account, storage)
   const current = drafts[slot]
   if (current?.pending?.request_id !== requestId) return false
+  const latest = latestDraft ?? current
   const destination = String(conversationId)
   if (slot === 'new') {
     const saved = drafts[destination]
-    if (current.text && !saved?.text) {
-      drafts[destination] = { ...saved, text: current.text }
+    if (latest.text && !saved?.text) {
+      drafts[destination] = { ...saved, text: latest.text }
     }
-    if (current.text && saved?.text) {
-      drafts[slot] = { text: current.text, policyId: current.policyId }
+    if (latest.text && saved?.text) {
+      drafts[slot] = { text: latest.text, policyId: latest.policyId }
     } else {
       delete drafts[slot]
     }
   } else {
-    drafts[slot] = { text: current.text }
+    drafts[slot] = { text: latest.text }
   }
   storage.setItem(key(account), JSON.stringify(drafts))
   return true
