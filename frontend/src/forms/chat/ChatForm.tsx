@@ -1,3 +1,5 @@
+import { Button, Stack, TextField } from '@mui/material'
+
 interface ChatFormProps {
   value: string
   onChange: (value: string) => void
@@ -7,6 +9,7 @@ interface ChatFormProps {
   onSend: () => Promise<void>
 }
 
+/** Keeps draft editing separate from the send lock so later typing is preserved. */
 export function ChatForm({
   value,
   onChange,
@@ -21,18 +24,25 @@ export function ChatForm({
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <input
-        aria-label="Message"
-        maxLength={2000}
-        readOnly={readOnly}
+    <Stack component="form" direction="row" spacing={1} onSubmit={handleSubmit}>
+      <TextField
+        fullWidth
+        size="small"
         value={value}
         onChange={(event) => onChange(event.target.value)}
         placeholder="Ask about your travel insurance"
+        slotProps={{
+          input: { readOnly },
+          htmlInput: { 'aria-label': 'Message', maxLength: 2000 },
+        }}
       />
-      <button type="submit" disabled={disabled || isPending || !value.trim()}>
+      <Button
+        type="submit"
+        variant="contained"
+        disabled={disabled || isPending || !value.trim()}
+      >
         {isPending ? 'Sending...' : 'Send'}
-      </button>
-    </form>
+      </Button>
+    </Stack>
   )
 }

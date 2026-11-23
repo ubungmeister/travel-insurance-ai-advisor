@@ -52,6 +52,12 @@ This example assumes `solePolicyId` comes from a completed, current owned-policy
 - Add `/** ... */` doc blocks to non-obvious hooks/functions/components, explaining responsibility, reason and safeguards. Keep them current when behavior changes; skip obvious wrappers and render-only helpers.
 - Keep pure data transforms separate from React hooks when they have no lifecycle or state dependency. Do not create a new abstraction for every expression.
 
+## Styling
+
+- **Approved preference:** keep small one-off MUI `sx` styles next to JSX; use named constants for larger component-specific styles when that improves readability. Group substantial related chat styles in one feature-level module instead of creating a companion file for every component. Keep page-specific styles in the page. Preserve theme tokens, responsive behavior and MUI props that express semantics or behavior.
+- **Source and scope:** user-approved chat styling consolidation (2026-11-23); see [MUI's customization guide](https://mui.com/material-ui/customization/how-to-customize/) and [System overview](https://mui.com/system/getting-started/overview/). `styled()` is appropriate for reusable components and theme overrides for app-wide consistency; neither is required for one-off chat styles. [Trainerlog's pinned `index.css`](https://github.com/ubungmeister/trainerlog/blob/5d20a656b82a4f252f0bed8e2cd241d84f68bcc4/frontend/src/index.css) uses named classes alongside inline Tailwind utilities; do not add another styling framework merely to copy it.
+- **Verification:** the 2026-11-23 consolidation passed 41 frontend tests and lint, and built to a separate temporary output directory. The default build output hit a Windows permission error on an existing `dist` asset; browser verification was not performed. The tests emitted React/Emotion renderer warnings and the build reported a large chunk.
+
 ## Checks
 
 Preserve integration-level recovery tests while adding focused tests around extracted boundaries. Verify exact URL errors, newer typing, offline retry, rejected recovery, account/logout transitions, late callbacks, cache retention and failed ancillary refreshes. Run the existing frontend test/lint/build commands; a source review or intermediate green run is not final verification.

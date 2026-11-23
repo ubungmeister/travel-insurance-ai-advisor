@@ -1,6 +1,8 @@
+import { Button, List, ListItem, Paper, Typography } from '@mui/material'
 import { useChatSessionContext } from '../../hooks/conversation/use-chat-session-context'
 import { PolicyDetails } from './PolicyDetails'
 
+/** Renders policy controls from the session without owning or auto-selecting a policy. */
 export function ChatPolicyPanel() {
   const chat = useChatSessionContext()
   const { policies, policyId, selectPolicy: onSelect } = chat
@@ -12,40 +14,74 @@ export function ChatPolicyPanel() {
     policies.find((item) => item.policy_id === policyId)
   return (
     <>
-      {isNew && visible && (
-        <section aria-label="Chat policy">
-          {policies.length === 0 && (
-            <p>
-              No policies linked. Sign in with the account linked to your policy
-              or contact support.
-            </p>
-          )}
-          {policies.length > 1 && (
-            <>
-              <h2>Choose a policy</h2>
-              <ul>
-                {policies.map((item) => (
-                  <li key={item.policy_id}>
-                    <PolicyDetails policy={item} />
-                    <button
-                      type="button"
-                      disabled={disabled}
-                      aria-pressed={policyId === item.policy_id}
-                      onClick={() => onSelect(item.policy_id)}
-                    >
-                      Choose {item.policy_number}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </section>
+      {isNew && visible && policies.length === 0 && (
+        <Paper
+          component="section"
+          variant="outlined"
+          aria-label="Chat policy"
+          sx={{ p: 1.5 }}
+        >
+          <Typography component="h2" variant="subtitle2">
+            Chat policy
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            No policies linked. Sign in with the account linked to your policy
+            or contact support.
+          </Typography>
+        </Paper>
+      )}
+      {isNew && visible && policies.length > 1 && (
+        <Paper
+          component="section"
+          variant="outlined"
+          aria-label="Chat policy"
+          sx={{ p: 1.5 }}
+        >
+          <Typography component="h2" variant="subtitle2">
+            Choose a policy
+          </Typography>
+          <List aria-label="Available policies" disablePadding>
+            {policies.map((item) => {
+              const selected = policyId === item.policy_id
+              return (
+                <ListItem
+                  key={item.policy_id}
+                  disableGutters
+                  sx={{
+                    gap: 1,
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <PolicyDetails policy={item} />
+                  <Button
+                    type="button"
+                    size="small"
+                    variant={selected ? 'contained' : 'outlined'}
+                    disabled={disabled}
+                    aria-pressed={selected}
+                    onClick={() => onSelect(item.policy_id)}
+                  >
+                    Choose {item.policy_number}
+                  </Button>
+                </ListItem>
+              )
+            })}
+          </List>
+        </Paper>
       )}
       {policy && (
-        <section aria-label="Selected policy">
+        <Paper
+          component="section"
+          variant="outlined"
+          aria-label="Selected policy"
+          sx={{ p: 1.5 }}
+        >
+          <Typography component="h2" variant="caption" color="text.secondary">
+            Selected policy
+          </Typography>
           <PolicyDetails policy={policy} />
-        </section>
+        </Paper>
       )}
     </>
   )
