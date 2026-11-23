@@ -1079,6 +1079,46 @@ test('chat layout keeps history in the sidebar and the transcript above the poli
   assert.match(viewText(status), /Send could not be confirmed/)
 })
 
+test('consolidated chat styles preserve rendered layout and scrolling', async (t) => {
+  const fixture = await contextFixture(t)
+  const { ChatSession } = await server.ssrLoadModule('/src/components/chat/ChatSession.tsx')
+  await fixture.render({}, createElement(ChatSession))
+  const session = fixture.root.findByType(ChatSession)
+  const styled = (predicate) => session.findAll((node) => node.props.sx && predicate(node.props))[0]
+  const layout = styled(({ sx }) => sx.gridTemplateColumns)
+  const history = styled(({ component }) => component === 'aside')
+  const transcript = styled(({ 'aria-label': label }) => label === 'Transcript')
+  const controls = styled(({ sx }) => sx.maxHeight?.md === '65%')
+  assert.deepEqual(layout.props.sx.gridTemplateColumns, { xs: 'minmax(0, 1fr)', md: '17rem minmax(0, 1fr)' })
+  assert.deepEqual(history.props.sx.maxHeight, { xs: '30dvh', md: 'none' })
+  assert.equal(history.props.sx.overflowY, 'auto')
+  assert.equal(transcript.props.sx.overflowY, 'auto')
+  assert.equal(controls.props.sx.overflowY, 'auto')
+})
+
+test('consolidated chat styles preserve rendered message role variants', async (t) => {
+  const { ChatTranscript } = await server.ssrLoadModule('/src/components/chat/ChatTranscript.tsx')
+  const { root } = renderView(t, createElement(ChatTranscript, {
+    messages: [
+      { id: 1, role: 'USER', content: 'User message' },
+      { id: 2, role: 'ASSISTANT', content: 'Assistant message' },
+    ],
+  }))
+  const bubbles = root.findAll((node) => node.props.component === 'li' && node.props.sx)
+  assert.equal(bubbles.length, 2)
+  assert.equal(bubbles[0].props.sx.alignSelf, 'flex-end')
+  assert.equal(bubbles[0].props.sx.bgcolor, 'primary.dark')
+  assert.equal(bubbles[0].props.sx.color, 'primary.contrastText')
+  assert.equal(bubbles[1].props.sx.alignSelf, 'flex-start')
+  assert.equal(bubbles[1].props.sx.bgcolor, 'background.paper')
+  assert.equal(bubbles[1].props.sx.color, 'text.primary')
+  for (const bubble of bubbles) {
+    const content = bubble.findAll((node) => node.props.sx?.whiteSpace === 'pre-wrap')[0]
+    assert.ok(content, 'message preserves whitespace')
+    assert.equal(content.props.sx.overflowWrap, 'anywhere')
+  }
+})
+
 test('context-driven chat sections update and resolve recovery without state props', async (t) => {
   const fixture = await contextFixture(t)
   const { ChatSession } = await server.ssrLoadModule('/src/components/chat/ChatSession.tsx')

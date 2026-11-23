@@ -1,5 +1,6 @@
 import { Paper, Stack, Typography } from '@mui/material'
 import type { ChatMessage } from '../../api'
+import { chatMessageStyles } from './chat-styles'
 
 export function ChatTranscript({ messages }: { messages: ChatMessage[] }) {
   return (
@@ -18,16 +19,7 @@ export function ChatTranscript({ messages }: { messages: ChatMessage[] }) {
             component="li"
             variant="outlined"
             key={message.id}
-            sx={{
-              alignSelf: isUser ? 'flex-end' : 'flex-start',
-              bgcolor: isUser ? 'primary.dark' : 'background.paper',
-              color: isUser ? 'primary.contrastText' : 'text.primary',
-              maxWidth: '85%',
-              minWidth: 0,
-              borderRadius: 2,
-              px: 1.5,
-              py: 1,
-            }}
+            sx={isUser ? chatMessageStyles.user : chatMessageStyles.assistant}
           >
             <Typography
               component="div"

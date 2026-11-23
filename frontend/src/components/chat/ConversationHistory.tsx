@@ -8,6 +8,15 @@ import {
 } from '@mui/material'
 import type { ConversationSummary } from '../../api'
 
+const historyItemStyle = {
+  borderRadius: 1,
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  textAlign: 'left',
+  overflowWrap: 'anywhere',
+  minWidth: 0,
+} as const
+
 interface ConversationHistoryProps {
   history: ConversationSummary[]
   conversationId?: number
@@ -58,14 +67,7 @@ export function ConversationHistory({
                 aria-current={active ? 'page' : undefined}
                 disabled={disabled}
                 onClick={() => onSelect(item.conversation_id)}
-                sx={{
-                  borderRadius: 1,
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  textAlign: 'left',
-                  overflowWrap: 'anywhere',
-                  minWidth: 0,
-                }}
+                sx={historyItemStyle}
               >
                 <Typography component="span" variant="subtitle2">
                   Conversation #{item.conversation_id}
