@@ -44,6 +44,13 @@ Decisions describe approved defaults within a scope, not proof that every implem
 - **Sources:** explicit user approval of the provider/consumer approach; `frontend/src/components/chat/ChatSessionProvider.tsx`, `frontend/src/hooks/conversation/use-chat-session-context.ts`, and [frontend architecture](frontend-architecture.md).
 - **Verification:** implementation and added regressions await execution because the shell harness remains blocked. This clarifies D-001/D-002's one-owner rule; it does not replace React Query or tab storage.
 
+## D-007: MUI for the first desktop chat layout
+- **Status / scope:** approved decision; first-draft desktop chat UI, not a mandate to migrate auth or use MUI for every feature.
+- **Decision:** use MUI Material 9.6.0 with Emotion for chat presentation and one shared light theme and `CssBaseline` at the app root. Keep React and ReactDOM at 18.3.1 and align the runtime `react-is` dependency and npm override to 18.3.1. Do not add the MUI icons package for this draft. D-002 and D-006 still govern ownership of chat state.
+- **Reason:** share a consistent visual baseline while keeping the existing React version and chat behavior.
+- **Sources:** user approval of the desktop chat layout and MUI choice (2026-11-23); `frontend/package.json`, `frontend/src/app/providers.tsx`, and [MUI installation guidance](https://mui.com/material-ui/getting-started/installation/).
+- **Verification:** strict-peer clean install and dependency-tree checks under npm 8.19.3 (lockfile v2), the focused light-theme test, and the frontend build passed. Existing Node engine warnings and the build's chunk-size warning are separate from React peer compatibility. Desktop visuals and live browser chat/auth flows were not verified by these checks.
+
 ## Recording a new decision
 
 Use: **ID/title; status; scope; choice; reason; sources; verification/limits; supersedes (if any)**. Explicit user choices are approved; new agent-derived preferences are proposed until approved. Keep application contract changes in README/ERD and applicable code/tests as well.

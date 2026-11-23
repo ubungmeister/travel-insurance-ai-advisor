@@ -1,12 +1,13 @@
 # Technology choices
 
-**Purpose:** distinguish observed dependencies from approved defaults and optional references. This document is not an instruction to install tools or upgrade versions. Package and lock files remain authoritative; inventory below was reviewed on 2026-11-21.
+**Purpose:** distinguish observed dependencies from approved defaults and optional references. This document is not an instruction to install tools or upgrade versions. Package and lock files remain authoritative; inventory below was reviewed on 2026-11-21 and updated for the chat UI dependency on 2026-11-23.
 
 ## AI Advisor current stack
 
 | Area | Current technology | Source / project preference |
 | --- | --- | --- |
 | Frontend | React 18, TypeScript, Vite 5 | `frontend/package.json`; retain the existing toolchain unless an upgrade is explicitly approved |
+| Desktop chat UI | MUI Material 9.6.0 with Emotion | `frontend/package.json`; approved for the desktop chat draft only ([D-007](decisions.md#d-007-mui-for-the-first-desktop-chat-layout)) |
 | Routing | React Router 7 | `frontend/package.json`, `frontend/src/app/router.tsx`; saved chat ID lives in the URL |
 | Server state | TanStack React Query 5 | Declared dependency and approved server-state owner; final chat-refactor verification remains pending |
 | Shared client state | Zustand 5 | Declared dependency used by auth; evaluate other shared-state needs selectively, not as a mandatory store or second server cache |
@@ -18,6 +19,8 @@
 
 Do not encode the current version inventory as a permanent preferred version. Check installed/locked versions, compatibility and current official documentation before an approved dependency change.
 
+For the desktop chat foundation, React and ReactDOM remain at 18.3.1. Both the runtime `react-is` dependency and its npm override are set to 18.3.1 to match React. The strict-peer clean install and dependency tree checked that alignment with npm 8.19.3 and lockfile v2; the theme test and build do not replace browser verification of chat or sign-in.
+
 ## Trainerlog reference stack
 
 Pinned [package.json](https://github.com/ubungmeister/trainerlog/blob/5d20a656b82a4f252f0bed8e2cd241d84f68bcc4/frontend/package.json) at the architecture guide's snapshot. The shared concepts are React/TypeScript/Vite, Router, React Query and selective client stores—not its complete library list or exact versions.
@@ -26,7 +29,8 @@ Pinned [package.json](https://github.com/ubungmeister/trainerlog/blob/5d20a656b8
 | --- | --- | --- |
 | React Hook Form + Zod + resolvers | **Optional/reference**, not declared here | Complex forms with validation and field-state requirements; confirm need and adoption first |
 | Tailwind, Radix/shadcn-style components | **Optional/reference** | A separately scoped UI/design-system decision |
-| MUI and MUI date pickers | **Optional/reference** | Concrete UI needs and compatibility/licensing review; not a default parallel component system |
+| MUI Material | **Approved for desktop chat only** | Evaluate separately for other features; not a blanket component library mandate |
+| MUI date pickers | **Optional/reference**, not declared here | Actual date input needs and compatibility/licensing review |
 | React Toastify | **Optional/reference** | A consistent notification requirement, not a replacement for meaningful inline error/recovery states |
 | date-fns, react-datepicker | **Optional/reference** | Actual date input/transformation needs; avoid multiple date-picker dependencies without a reason |
 | Lucide, class utilities, avatars | **Optional/reference** | A feature needs them; no blanket baseline install |

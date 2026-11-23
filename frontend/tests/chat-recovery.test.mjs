@@ -29,6 +29,11 @@ const server = await createServer({
 })
 after(() => server.close())
 
+test('application theme uses a light palette', async () => {
+  const { appTheme } = await server.ssrLoadModule('/src/app/theme.ts')
+  assert.equal(appTheme.palette.mode, 'light')
+})
+
 const policy = { policy_id: 3, policy_number: 'P-3' }
 const detail = { conversation_id: 7, selected_policy: policy, messages: [] }
 const requestId = 'c11bfdd9-7ab4-426e-8675-89d96360c9ef'
