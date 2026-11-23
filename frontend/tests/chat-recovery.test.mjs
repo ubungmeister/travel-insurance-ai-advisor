@@ -1061,6 +1061,7 @@ test('chat layout keeps history in the sidebar and the transcript above the poli
   assert.match(viewText(history), /Conversation #7/)
 
   const main = fixture.root.findByType('main')
+  assert.doesNotMatch(viewText(main), /TODO/)
   assert.equal(main.findAllByType('nav').length, 0)
   const transcript = main.findByType('ol')
   assert.match(viewText(transcript), /Saved message/)
@@ -1079,6 +1080,45 @@ test('chat layout keeps history in the sidebar and the transcript above the poli
   assert.match(viewText(status), /Send could not be confirmed/)
 })
 
+test('transcript opens at the latest message and follows only when the reader is at the bottom', async (t) => {
+  const { useChatTranscriptAutoScroll } = await server.ssrLoadModule('/src/hooks/conversation/use-chat-transcript-auto-scroll.ts')
+  let scrollTop = 0
+  const element = {
+    scrollHeight: 1000,
+    clientHeight: 400,
+    get scrollTop() { return scrollTop },
+    set scrollTop(value) { scrollTop = Math.max(0, Math.min(value, this.scrollHeight - this.clientHeight)) },
+  }
+  function Harness({ messageCount }) {
+    const { transcriptRef, onTranscriptScroll } = useChatTranscriptAutoScroll(messageCount)
+    return createElement('div', { ref: transcriptRef, onScroll: onTranscriptScroll })
+  }
+  let renderer
+  act(() => {
+    renderer = TestRenderer.create(createElement(Harness, { messageCount: 1 }), {
+      createNodeMock: (node) => node.type === 'div' ? element : {},
+    })
+  })
+  t.after(() => act(() => renderer.unmount()))
+  assert.equal(element.scrollTop, 600, 'initial saved transcript moves to the latest message')
+
+  element.scrollHeight = 1400
+  act(() => renderer.update(createElement(Harness, { messageCount: 2 })))
+  assert.equal(element.scrollTop, 1000, 'a reader at the bottom follows the new reply')
+
+  element.scrollTop = 100
+  act(() => renderer.root.findByType('div').props.onScroll({ currentTarget: element }))
+  element.scrollHeight = 1800
+  act(() => renderer.update(createElement(Harness, { messageCount: 3 })))
+  assert.equal(element.scrollTop, 100, 'a reader browsing older messages is not pulled to the bottom')
+
+  element.scrollTop = 1400
+  act(() => renderer.root.findByType('div').props.onScroll({ currentTarget: element }))
+  element.scrollHeight = 2200
+  act(() => renderer.update(createElement(Harness, { messageCount: 4 })))
+  assert.equal(element.scrollTop, 1800, 'following resumes after the reader returns to the bottom')
+})
+
 test('consolidated chat styles preserve rendered layout and scrolling', async (t) => {
   const fixture = await contextFixture(t)
   const { ChatSession } = await server.ssrLoadModule('/src/components/chat/ChatSession.tsx')
@@ -1093,6 +1133,7 @@ test('consolidated chat styles preserve rendered layout and scrolling', async (t
   assert.deepEqual(history.props.sx.maxHeight, { xs: '30dvh', md: 'none' })
   assert.equal(history.props.sx.overflowY, 'auto')
   assert.equal(transcript.props.sx.overflowY, 'auto')
+  assert.equal(typeof transcript.props.onScroll, 'function')
   assert.equal(controls.props.sx.overflowY, 'auto')
 })
 

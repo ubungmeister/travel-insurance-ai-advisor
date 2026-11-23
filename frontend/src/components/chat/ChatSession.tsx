@@ -1,4 +1,6 @@
 import { Box, Stack, Typography } from '@mui/material'
+import { useChatSessionContext } from '../../hooks/conversation/use-chat-session-context'
+import { useChatTranscriptAutoScroll } from '../../hooks/conversation/use-chat-transcript-auto-scroll'
 import { ChatComposer } from './ChatComposer'
 import { ChatHistory } from './ChatHistory'
 import { ChatMessages } from './ChatMessages'
@@ -7,8 +9,13 @@ import { ChatSessionStatus } from './ChatSessionStatus'
 import { PendingSendRecovery } from './PendingSendRecovery'
 import { chatSessionStyles } from './chat-styles'
 
-/** Lays out the shared session without taking ownership of any chat state. */
+/** Lays out the shared session and connects transcript scrolling without owning chat state. */
 export function ChatSession() {
+  const { conversation } = useChatSessionContext()
+  const { transcriptRef, onTranscriptScroll } = useChatTranscriptAutoScroll(
+    conversation?.messages.length ?? 0,
+  )
+
   return (
     <Box sx={chatSessionStyles.layout}>
       <Box
@@ -26,6 +33,8 @@ export function ChatSession() {
           role="region"
           aria-label="Transcript"
           tabIndex={0}
+          ref={transcriptRef}
+          onScroll={onTranscriptScroll}
           sx={chatSessionStyles.transcript}
         >
           <Box sx={{ maxWidth: '50rem', mx: 'auto' }}>
@@ -41,8 +50,8 @@ export function ChatSession() {
               Mock chat only — replies are not coverage advice. Messages are
               saved.
             </Typography>
-            <ChatSessionStatus /> //TODO: Implement actual session status handling
-            <PendingSendRecovery /> //TODO: Implement actual pending send recovery handling
+            <ChatSessionStatus />
+            <PendingSendRecovery />
             <ChatPolicyPanel />
             <ChatComposer />
           </Stack>
