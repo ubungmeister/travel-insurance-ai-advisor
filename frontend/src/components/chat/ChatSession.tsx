@@ -1,6 +1,6 @@
 import { Box, Stack, Typography } from '@mui/material'
-import { useChatSessionContext } from '../../hooks/conversation/use-chat-session-context'
-import { useChatTranscriptAutoScroll } from '../../hooks/conversation/use-chat-transcript-auto-scroll'
+import { useChatSessionContext } from '../../hooks/chat/use-chat-session-context'
+import { useChatTranscriptAutoScroll } from '../../hooks/chat/use-chat-transcript-auto-scroll'
 import { ChatComposer } from './ChatComposer'
 import { ChatHistory } from './ChatHistory'
 import { ChatMessages } from './ChatMessages'

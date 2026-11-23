@@ -1,7 +1,7 @@
 import type { PropsWithChildren } from 'react'
 
-import { ChatSessionContext } from '../../hooks/conversation/chat-session-context'
-import { useChatSessionController } from '../../hooks/conversation/use-chat-session-controller'
+import { ChatSessionContext } from '../../hooks/chat/chat-session-context'
+import { useChatSessionController } from '../../hooks/chat/use-chat-session-controller'
 
 type Props = PropsWithChildren<{
   accountId: string

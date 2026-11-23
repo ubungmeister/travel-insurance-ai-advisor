@@ -41,7 +41,7 @@ Decisions describe approved defaults within a scope, not proof that every implem
 - **Status / scope:** approved preference; the chat feature's shared state access.
 - **Decision:** `ChatSessionProvider` instantiates `useChatSessionController` once per account/route/logout-epoch scope. Feature sections consume `useChatSessionContext` without state-prop plumbing; generic form/history/transcript views retain reusable props behind adapters.
 - **Reason:** each call to a stateful custom hook creates its own local state and mutation observer. React Query sharing does not make independent draft/controller instances equivalent to one session.
-- **Sources:** explicit user approval of the provider/consumer approach; `frontend/src/components/chat/ChatSessionProvider.tsx`, `frontend/src/hooks/conversation/use-chat-session-context.ts`, and [frontend architecture](frontend-architecture.md).
+- **Sources:** explicit user approval of the provider/consumer approach; `frontend/src/components/chat/ChatSessionProvider.tsx`, `frontend/src/hooks/chat/use-chat-session-context.ts`, and [frontend architecture](frontend-architecture.md).
 - **Verification:** implementation and added regressions await execution because the shell harness remains blocked. This clarifies D-001/D-002's one-owner rule; it does not replace React Query or tab storage.
 
 ## D-007: MUI for the first desktop chat layout

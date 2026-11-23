@@ -1,5 +1,5 @@
 import { Button, List, ListItem, Paper, Typography } from '@mui/material'
-import { useChatSessionContext } from '../../hooks/conversation/use-chat-session-context'
+import { useChatSessionContext } from '../../hooks/chat/use-chat-session-context'
 import { PolicyDetails } from './PolicyDetails'
 
 /** Renders policy controls from the session without owning or auto-selecting a policy. */

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { useChatSessionContext } from '../../hooks/conversation/use-chat-session-context'
+import { useChatSessionContext } from '../../hooks/chat/use-chat-session-context'
 
 export function ChatSessionStatus() {
   const {

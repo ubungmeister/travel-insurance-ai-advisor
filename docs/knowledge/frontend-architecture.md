@@ -41,7 +41,7 @@ props. Small `ChatComposer`, `ChatHistory`, and `ChatMessages` adapters connect
 those views to context. Context exposes existing owners; it is not a new global
 store, a second query cache, or an excuse to remove props from all components.
 
-Useful code locations to inspect (not a claim of verified examples): `frontend/src/hooks/conversation/`, `frontend/src/components/chat/`, `frontend/src/lib/chat-drafts.ts`, `frontend/src/lib/api-client.ts`, and `frontend/tests/chat-recovery.test.mjs`.
+Useful code locations to inspect (not a claim of verified examples): `frontend/src/hooks/chat/`, `frontend/src/components/chat/`, `frontend/src/lib/chat-drafts.ts`, `frontend/src/lib/api-client.ts`, and `frontend/tests/chat-recovery.test.mjs`.
 
 ## Trainerlog reference
 

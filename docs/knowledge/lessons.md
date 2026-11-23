@@ -6,7 +6,7 @@ This is a curated set of rules with evidence, not a raw session history. Approva
 - **Status / scope:** approved guidance; React effects calling a callback from another hook.
 - **Lesson:** extract the stable callback and the primitive value used by the effect; reference those names in both body and dependency array. Do not add a whole newly created result object or suppress the warning merely to silence lint.
 - **Reason:** dependencies must track what the effect reads without making its lifecycle depend on unrelated result identity changes.
-- **Evidence:** the chat auto-selection effect produced a missing-`draft` dependency warning. It was changed to use a stable destructured callback and selected policy ID; see `frontend/src/hooks/conversation/use-chat-session-controller.ts` and [frontend patterns](frontend-patterns.md).
+- **Evidence:** the chat auto-selection effect produced a missing-`draft` dependency warning. It was changed to use a stable destructured callback and selected policy ID; see `frontend/src/hooks/chat/use-chat-session-controller.ts` and [frontend patterns](frontend-patterns.md).
 - **Verification limit:** the final lint rerun for that correction was blocked by the harness. Treat it as an approved approach with verification pending, not a verified lint result.
 
 ## L-002: A request failure is not proof that its write failed
