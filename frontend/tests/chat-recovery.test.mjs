@@ -1029,16 +1029,69 @@ test('provider route change aborts a send and leaves its original recovery intac
   assert.deepEqual(fixture.client.getQueryData(['chat', 'alice', 'conversation', 7]).messages, [])
 })
 
+test('chat layout keeps history in the sidebar and the transcript above the policy and composer', async (t) => {
+  const fixture = await contextFixture(t)
+  const { ChatSession } = await server.ssrLoadModule(
+    '/src/components/chat/ChatSession.tsx',
+  )
+  const { updateDraft } = await server.ssrLoadModule('/src/lib/chat-drafts.ts')
+  updateDraft('alice', '7', () => ({
+    text: '',
+    pending: {
+      request_id: requestId,
+      conversation_id: 7,
+      message: 'Awaiting confirmation',
+    },
+  }), fixture.tab)
+  globalThis.fetch.mock.mockImplementation(async (url, options) => {
+    if (options.method === 'POST') return Response.json({}, { status: 503 })
+    if (new URL(url).pathname.endsWith('/7')) {
+      return Response.json({
+        ...detail,
+        messages: [{ id: 1, role: 'USER', content: 'Saved message' }],
+      })
+    }
+    return Response.json(historyEntries)
+  })
+  await fixture.render({ target: '7' }, createElement(ChatSession))
+
+  const [sidebar] = fixture.root.findAllByType('aside')
+  assert.ok(sidebar?.props['aria-label'], 'history needs a labeled sidebar')
+  const history = sidebar.findByType('nav')
+  assert.match(viewText(history), /Conversation #7/)
+
+  const main = fixture.root.findByType('main')
+  assert.equal(main.findAllByType('nav').length, 0)
+  const transcript = main.findByType('ol')
+  assert.match(viewText(transcript), /Saved message/)
+  assert.deepEqual(
+    main
+      .findAll((node) => ['ol', 'section', 'form'].includes(node.type))
+      .map((node) => node.props['aria-label'] ?? node.type),
+    ['Chat messages', 'Pending send', 'Selected policy', 'form'],
+  )
+  const retry = main.findAllByType('button').find(
+    (button) => viewText(button) === 'Retry pending message',
+  )
+  assert.ok(retry)
+  await act(async () => retry.props.onClick())
+  const status = main.findByProps({ role: 'alert' })
+  assert.match(viewText(status), /Send could not be confirmed/)
+})
+
 test('context-driven chat sections update and resolve recovery without state props', async (t) => {
   const fixture = await contextFixture(t)
   const { ChatSession } = await server.ssrLoadModule('/src/components/chat/ChatSession.tsx')
   await fixture.render({}, createElement(ChatSession))
   const choose = fixture.root.findAllByType('button').find((button) => button.children.join('') === 'Choose P-3')
   act(() => choose.props.onClick())
+  assert.equal(fixture.root.findByType('input').props.maxLength, 2000)
   act(() => fixture.root.findByType('input').props.onChange({ target: { value: 'Rejected text' } }))
   await act(async () => { fixture.root.findByType('form').props.onSubmit({ preventDefault() {} }) })
   const restore = fixture.root.findAllByType('button').find((button) => button.children.join('') === 'Restore rejected text')
   assert.ok(restore)
+  const main = fixture.root.findByType('main')
+  assert.ok(main.findAllByType('button').includes(restore))
   act(() => restore.props.onClick())
   assert.equal(fixture.root.findByType('input').props.value, 'Rejected text')
   assert.equal(fixture.root.findAllByType('button').some((button) => button.children.join('') === 'Restore rejected text'), false)
