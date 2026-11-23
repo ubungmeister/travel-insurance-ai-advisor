@@ -1,3 +1,11 @@
+import {
+  Box,
+  Button,
+  List,
+  ListItem,
+  ListItemButton,
+  Typography,
+} from '@mui/material'
 import type { ConversationSummary } from '../../api'
 
 interface ConversationHistoryProps {
@@ -16,28 +24,72 @@ export function ConversationHistory({
   onNew,
 }: ConversationHistoryProps) {
   return (
-    <nav aria-label="Conversation history">
-      <label htmlFor="conversation-history">Conversation history</label>{' '}
-      <select
-        id="conversation-history"
-        value={conversationId ?? ''}
-        disabled={disabled || history.length === 0}
-        onChange={(event) => onSelect(Number(event.target.value))}
+    <Box component="nav" aria-label="Conversation history">
+      <Typography component="h2" variant="subtitle1" sx={{ mb: 1 }}>
+        Conversation history
+      </Typography>
+      <Button
+        type="button"
+        fullWidth
+        variant="outlined"
+        disabled={disabled}
+        onClick={onNew}
       >
-        <option value="" disabled>
-          Select a conversation
-        </option>
-        {history.map((item) => (
-          <option key={item.conversation_id} value={item.conversation_id}>
-            #{item.conversation_id} ·{' '}
-            {item.selected_policy?.policy_number ?? 'No policy'} ·{' '}
-            {item.last_activity_at}
-          </option>
-        ))}
-      </select>{' '}
-      <button type="button" disabled={disabled} onClick={onNew}>
         New chat
-      </button>
-    </nav>
+      </Button>
+      {history.length === 0 && (
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+          No conversations yet.
+        </Typography>
+      )}
+      <List aria-label="Saved conversations" sx={{ mt: 1 }} disablePadding>
+        {history.map((item) => {
+          const active = item.conversation_id === conversationId
+          return (
+            <ListItem
+              key={item.conversation_id}
+              disablePadding
+              sx={{ mb: 0.5 }}
+            >
+              <ListItemButton
+                component="button"
+                type="button"
+                selected={active}
+                aria-current={active ? 'page' : undefined}
+                disabled={disabled}
+                onClick={() => onSelect(item.conversation_id)}
+                sx={{
+                  borderRadius: 1,
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  textAlign: 'left',
+                  overflowWrap: 'anywhere',
+                  minWidth: 0,
+                }}
+              >
+                <Typography component="span" variant="subtitle2">
+                  Conversation #{item.conversation_id}
+                </Typography>
+                <Typography
+                  component="span"
+                  variant="body2"
+                  color="text.secondary"
+                >
+                  {item.selected_policy?.policy_number ?? 'No policy'} ·{' '}
+                  <time dateTime={item.last_activity_at}>
+                    {new Date(item.last_activity_at).toLocaleDateString(
+                      undefined,
+                      {
+                        dateStyle: 'medium',
+                      },
+                    )}
+                  </time>
+                </Typography>
+              </ListItemButton>
+            </ListItem>
+          )
+        })}
+      </List>
+    </Box>
   )
 }

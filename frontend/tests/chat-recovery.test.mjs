@@ -34,7 +34,18 @@ test('application theme uses a light palette', async () => {
   assert.equal(appTheme.palette.mode, 'light')
 })
 
-const policy = { policy_id: 3, policy_number: 'P-3' }
+const policy = {
+  policy_id: 3,
+  policy_number: 'P-3',
+  plan_name: 'Travel plan',
+  plan_version: 2,
+  territory: 'EUROPE',
+  trip_purpose: 'VACATION',
+  sport_category: 'RECREATIONAL',
+  start_date: '2026-11-19',
+  end_date: '2026-11-29',
+  status: 'ISSUED',
+}
 const detail = { conversation_id: 7, selected_policy: policy, messages: [] }
 const requestId = 'c11bfdd9-7ab4-426e-8675-89d96360c9ef'
 
@@ -185,6 +196,224 @@ function storage() {
     removeItem: (key) => data.delete(key),
   }
 }
+
+const historyEntries = [
+  {
+    conversation_id: 7,
+    selected_policy: policy,
+    created_at: '2026-11-19T13:00:00Z',
+    last_activity_at: '2026-11-20T13:00:00Z',
+  },
+  {
+    conversation_id: 8,
+    selected_policy: null,
+    created_at: '2026-11-19T13:00:00Z',
+    last_activity_at: '2026-11-19T13:00:00Z',
+  },
+]
+
+function renderView(t, view) {
+  let renderer
+  act(() => {
+    renderer = TestRenderer.create(view)
+  })
+  t.after(() => act(() => renderer.unmount()))
+  return renderer
+}
+
+function viewText(node) {
+  if (typeof node === 'string') return node
+  if (node.type === 'style') return ''
+  return node.children.map(viewText).join('')
+}
+
+test('conversation history has one empty list and still offers New chat', async (t) => {
+  const { ConversationHistory } = await server.ssrLoadModule(
+    '/src/components/chat/ConversationHistory.tsx',
+  )
+  const { root } = renderView(
+    t,
+    createElement(ConversationHistory, {
+      history: [],
+      disabled: false,
+      onSelect() {},
+      onNew() {},
+    }),
+  )
+  const nav = root.findByType('nav')
+  assert.equal(nav.props['aria-label'], 'Conversation history')
+  assert.equal(nav.findByType('ul').findAllByType('li').length, 0)
+  assert.match(viewText(nav), /No conversations yet/i)
+  const newChat = nav.findByType('button')
+  assert.equal(viewText(newChat), 'New chat')
+  assert.ok(!newChat.props.disabled)
+})
+
+test('conversation history marks only the active row and shows saved metadata', async (t) => {
+  const { ConversationHistory } = await server.ssrLoadModule(
+    '/src/components/chat/ConversationHistory.tsx',
+  )
+  const { root } = renderView(
+    t,
+    createElement(ConversationHistory, {
+      history: historyEntries,
+      conversationId: 8,
+      disabled: false,
+      onSelect() {},
+      onNew() {},
+    }),
+  )
+  const rows = root.findByType('ul').findAllByType('button')
+  assert.equal(rows.length, 2)
+  assert.match(viewText(rows[0]), /#7.*P-3/)
+  assert.match(viewText(rows[1]), /#8/)
+  assert.deepEqual(
+    rows.map((row) => row.props['aria-current']),
+    [undefined, 'page'],
+  )
+  const activity = rows[0].findByType('time')
+  assert.equal(activity.props.dateTime, '2026-11-20T13:00:00Z')
+  assert.match(viewText(activity), /2026/)
+  assert.doesNotMatch(viewText(activity), /T13:00/)
+})
+
+test('conversation history forwards row and New chat actions and disables both when requested', async (t) => {
+  const { ConversationHistory } = await server.ssrLoadModule(
+    '/src/components/chat/ConversationHistory.tsx',
+  )
+  const selections = []
+  let newChats = 0
+  const view = (disabled) => createElement(ConversationHistory, {
+    history: historyEntries,
+    disabled,
+    onSelect: (id) => selections.push(id),
+    onNew: () => newChats++,
+  })
+  const renderer = renderView(t, view(false))
+  const rows = renderer.root.findByType('ul').findAllByType('button')
+  const newChat = renderer.root
+    .findAllByType('button')
+    .find((button) => viewText(button) === 'New chat')
+  act(() => rows[1].props.onClick())
+  act(() => newChat.props.onClick())
+  assert.deepEqual(selections, [8])
+  assert.equal(newChats, 1)
+  act(() => renderer.update(view(true)))
+  assert.ok(
+    renderer.root.findAllByType('button').every((button) => button.props.disabled),
+  )
+})
+
+test('chat history adapter navigates to the exact saved and new chat routes', async (t) => {
+  const { ChatHistory } = await server.ssrLoadModule(
+    '/src/components/chat/ChatHistory.tsx',
+  )
+  const { ChatSessionContext } = await server.ssrLoadModule(
+    '/src/hooks/conversation/chat-session-context.ts',
+  )
+  const paths = []
+  const { root } = renderView(
+    t,
+    createElement(
+      ChatSessionContext.Provider,
+      {
+        value: {
+          history: historyEntries,
+          conversation: detail,
+          navigate: (path) => paths.push(path),
+        },
+      },
+      createElement(ChatHistory),
+    ),
+  )
+  const [active, next] = root.findByType('ul').findAllByType('button')
+  assert.equal(active.props['aria-current'], 'page')
+  act(() => next.props.onClick())
+  const newChat = root
+    .findAllByType('button')
+    .find((button) => viewText(button) === 'New chat')
+  act(() => newChat.props.onClick())
+  assert.deepEqual(paths, ['/chat/8', '/chat/new'])
+})
+
+async function policyPanelView() {
+  const { ChatPolicyPanel } = await server.ssrLoadModule(
+    '/src/components/chat/ChatPolicyPanel.tsx',
+  )
+  const { ChatSessionContext } = await server.ssrLoadModule(
+    '/src/hooks/conversation/chat-session-context.ts',
+  )
+  return (state) =>
+    createElement(
+      ChatSessionContext.Provider,
+      {
+        value: {
+          target: 'new',
+          policies: [],
+          loading: false,
+          loadError: false,
+          sending: false,
+          ...state,
+        },
+      },
+      createElement(ChatPolicyPanel),
+    )
+}
+
+test('chat policy panel explains the no-policy state without offering a choice', async (t) => {
+  const view = await policyPanelView()
+  const { root } = renderView(t, view({}))
+  const section = root.findByType('section')
+  assert.equal(section.props['aria-label'], 'Chat policy')
+  assert.equal(viewText(section.findByType('h2')), 'Chat policy')
+  assert.match(viewText(section), /No policies linked/)
+  assert.equal(section.findAllByType('button').length, 0)
+})
+
+test('chat policy panel shows one selected policy without a redundant chooser', async (t) => {
+  const view = await policyPanelView()
+  const { root } = renderView(t, view({ policies: [policy], policyId: 3 }))
+  const section = root.findByType('section')
+  assert.equal(section.props['aria-label'], 'Selected policy')
+  assert.equal(viewText(section.findByType('h2')), 'Selected policy')
+  assert.match(viewText(section), /P-3.*Travel plan.*EUROPE/)
+  assert.match(viewText(section), /2026-11-19.*2026-11-29.*ISSUED/)
+  assert.equal(root.findAllByType('button').length, 0)
+})
+
+test('chat policy panel forwards a choice, reflects selection and respects send and recovery locks', async (t) => {
+  const view = await policyPanelView()
+  const selections = []
+  const state = {
+    policies: [policy, { ...policy, policy_id: 4, policy_number: 'P-4' }],
+    selectPolicy: (id) => selections.push(id),
+  }
+  const renderer = renderView(t, view(state))
+  const choices = () => {
+    const list = renderer.root.findByType('ul')
+    assert.equal(list.props['aria-label'], 'Available policies')
+    return list.findAllByType('button')
+  }
+  assert.deepEqual(choices().map(viewText), ['Choose P-3', 'Choose P-4'])
+  assert.deepEqual(
+    choices().map((button) => button.props['aria-pressed']),
+    [false, false],
+  )
+  act(() => choices()[1].props.onClick())
+  assert.deepEqual(selections, [4])
+  act(() => renderer.update(view({ ...state, policyId: 4 })))
+  assert.deepEqual(
+    choices().map((button) => button.props['aria-pressed']),
+    [false, true],
+  )
+  for (const locked of [
+    { sending: true },
+    { recovery: { request_id: requestId, policy_id: 4, message: 'Pending' } },
+  ]) {
+    act(() => renderer.update(view({ ...state, policyId: 4, ...locked })))
+    assert.ok(choices().every((button) => button.props.disabled))
+  }
+})
 
 async function mount(t, route) {
   const { useChatSessionController } = await server.ssrLoadModule(
